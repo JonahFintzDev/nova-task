@@ -1,0 +1,31 @@
+services:
+  nova-task:
+    build: .
+    ports:
+      - '3080:3000'
+    env_file: .env
+    environment:
+      HOME: /config
+    volumes:
+      - ~/.nova-task/config:/config
+    depends_on:
+      - postgres
+    networks:
+      - nova-task
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-nova_task}
+    volumes:
+      - nova-task-postgres-data:/var/lib/postgresql/data
+    networks:
+      - nova-task
+
+volumes:
+  nova-task-postgres-data:
+
+networks:
+  nova-task:

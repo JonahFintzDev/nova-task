@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Checkmark -->
+  <path d="M 118 268 L 212 358 L 390 148"
+        stroke="#ff2d55"
+        stroke-width="60"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
+
+  <!-- Nova 4-point star at apex -->
+  <path d="M 390,70 L 399,99 L 428,108 L 399,117 L 390,146 L 381,117 L 352,108 L 381,99 Z"
+        fill="#ffffff"/>
+
+  <!-- Nova particle dots -->
+  <circle cx="438" cy="74"  r="7"  fill="#ff2d55"/>
+  <circle cx="408" cy="54"  r="5"  fill="#ff2d55"/>
+  <circle cx="450" cy="116" r="5"  fill="#ff2d55"/>
+</svg>
