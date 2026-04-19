@@ -2,11 +2,11 @@
 // node_modules
 import { useAttrs } from 'vue';
 
-// lib
+// api
 import { modalTransitionEnter, modalTransitionLeave } from '@/lib/gsap';
 
+// -------------------------------------------------- Props --------------------------------------------------
 defineOptions({ inheritAttrs: false });
-
 withDefaults(
   defineProps<{
     show: boolean;
@@ -16,6 +16,7 @@ withDefaults(
   { teleport: true },
 );
 
+// -------------------------------------------------- Refs --------------------------------------------------
 const attrs = useAttrs();
 </script>
 

@@ -18,15 +18,13 @@ import { detectBrowserLocale, setLocale, type LocaleCode } from '@/lib/i18n';
 import { useAuthStore } from '@/stores/auth';
 
 // -------------------------------------------------- Data --------------------------------------------------
-
 const bBooting = ref(true);
 const authStore = useAuthStore();
 const { t } = useI18n();
 const appRoot = ref<HTMLElement | null>(null);
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-function applyGuestLocale(): void {
+const applyGuestLocale = (): void => {
   const fallback = detectBrowserLocale();
   setLocale(fallback);
   dayjs.locale(fallback);
@@ -35,9 +33,9 @@ function applyGuestLocale(): void {
     darkTheme: null,
     lightTheme: null,
   });
-}
+};
 
-async function applyAuthenticatedSettings(): Promise<void> {
+const applyAuthenticatedSettings = async (): Promise<void> => {
   try {
     const settings = await settingsApi.get();
     const locale = (settings.language === 'de' ? 'de' : 'en') as LocaleCode;
@@ -51,10 +49,9 @@ async function applyAuthenticatedSettings(): Promise<void> {
   } catch {
     applyGuestLocale();
   }
-}
+};
 
 // -------------------------------------------------- Lifecycle --------------------------------------------------
-
 onMounted(async () => {
   migrateLegacyThemeLocalStorage();
   await fetchNeedsSetup();

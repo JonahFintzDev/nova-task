@@ -18,65 +18,123 @@ import { useAuthStore } from '@/stores/auth';
 import type { User } from '@/@types/index';
 
 // -------------------------------------------------- Store --------------------------------------------------
-
 const authStore = useAuthStore();
 const { t } = useI18n();
 
 // -------------------------------------------------- Data --------------------------------------------------
-
 const tab = ref<'users' | 'settings'>('users');
 const users = ref<User[]>([]);
 const bRegistration = ref(true);
+const bCommentsEnabled = ref(true);
+const aiApiUrl = ref('');
+const aiApiKey = ref('');
+const aiApiKeyPlaceholder = ref('');
+const aiModel = ref('');
+const bAiSaving = ref(false);
+const bAiSaved = ref(false);
+const bAiTesting = ref(false);
+const aiTestResult = ref<{ ok: boolean; error?: string } | null>(null);
 const bLoading = ref(false);
 const deleteTarget = ref<User | null>(null);
 
 // -------------------------------------------------- Lifecycle --------------------------------------------------
-
 onMounted(async () => {
   await refresh();
 });
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-async function refresh(): Promise<void> {
+const refresh = async (): Promise<void> => {
   bLoading.value = true;
   try {
     users.value = await adminApi.listUsers();
     const settings = await adminApi.getSettings();
     bRegistration.value = settings.registrationEnabled;
+    bCommentsEnabled.value = settings.commentsEnabled;
+    aiApiUrl.value = settings.aiApiUrl ?? '';
+    aiModel.value = settings.aiModel ?? '';
+    // The server returns '••••••••' when a key is set, or null when not set
+    aiApiKeyPlaceholder.value = settings.aiApiKey ?? '';
+    aiApiKey.value = '';
   } finally {
     bLoading.value = false;
   }
-}
+};
 
-function isSelf(user: User): boolean {
+const isSelf = (user: User): boolean => {
   if (authStore.userId) {
     return user.id === authStore.userId;
   }
   return user.username === authStore.username;
-}
+};
 
-async function toggleAdmin(user: User): Promise<void> {
+const toggleAdmin = async (user: User): Promise<void> => {
   if (isSelf(user)) {
     return;
   }
   await adminApi.updateUser(user.id, { isAdmin: !user.isAdmin });
   await refresh();
-}
+};
 
-async function confirmDelete(): Promise<void> {
+const confirmDelete = async (): Promise<void> => {
   if (!deleteTarget.value) {
     return;
   }
   await adminApi.deleteUser(deleteTarget.value.id);
   deleteTarget.value = null;
   await refresh();
-}
+};
 
-async function setRegistrationEnabled(enabled: boolean): Promise<void> {
+const setRegistrationEnabled = async (enabled: boolean): Promise<void> => {
   bRegistration.value = enabled;
   await adminApi.updateSettings({ registrationEnabled: enabled });
-}
+};
+
+const setCommentsEnabled = async (enabled: boolean): Promise<void> => {
+  bCommentsEnabled.value = enabled;
+  await adminApi.updateSettings({ commentsEnabled: enabled });
+};
+
+const testAiSettings = async (): Promise<void> => {
+  bAiTesting.value = true;
+  aiTestResult.value = null;
+  try {
+    const result = await adminApi.testAi({
+      aiApiUrl: aiApiUrl.value.trim() || null,
+      // Only send the key if the user typed a new one; otherwise the backend uses the saved one
+      aiApiKey: aiApiKey.value.trim() || null,
+      aiModel: aiModel.value.trim() || null,
+    });
+    aiTestResult.value = result;
+  } catch (err) {
+    const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      ?? (err instanceof Error ? err.message : String(err));
+    aiTestResult.value = { ok: false, error: msg };
+  } finally {
+    bAiTesting.value = false;
+  }
+};
+
+const saveAiSettings = async (): Promise<void> => {
+  bAiSaving.value = true;
+  bAiSaved.value = false;
+  try {
+    const payload: { aiApiUrl?: string | null; aiApiKey?: string | null; aiModel?: string | null } = {
+      aiApiUrl: aiApiUrl.value.trim() || null,
+      aiModel: aiModel.value.trim() || null,
+    };
+    // Only send the key if the user actually typed something new
+    if (aiApiKey.value.trim()) {
+      payload.aiApiKey = aiApiKey.value.trim();
+    }
+    await adminApi.updateSettings(payload);
+    aiApiKey.value = '';
+    await refresh();
+    bAiSaved.value = true;
+    setTimeout(() => { bAiSaved.value = false; }, 3000);
+  } finally {
+    bAiSaving.value = false;
+  }
+};
 </script>
 
 <template>
@@ -152,6 +210,93 @@ async function setRegistrationEnabled(enabled: boolean): Promise<void> {
           >
             {{ t('admin.registrationOff') }}
           </button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label">{{ t('admin.comments') }}</label>
+        <div
+          class="inline-flex w-max max-w-full flex-wrap items-stretch gap-0.5 rounded-md border border-border p-0.5"
+        >
+          <button
+            type="button"
+            class="button !h-9 !max-h-9 !min-h-9 shrink-0 border-0 px-4 py-0 text-sm"
+            :class="bCommentsEnabled ? 'is-primary' : 'is-transparent'"
+            @click="setCommentsEnabled(true)"
+          >
+            {{ t('admin.commentsOn') }}
+          </button>
+          <button
+            type="button"
+            class="button !h-9 !max-h-9 !min-h-9 shrink-0 border-0 px-4 py-0 text-sm"
+            :class="!bCommentsEnabled ? 'is-primary' : 'is-transparent'"
+            @click="setCommentsEnabled(false)"
+          >
+            {{ t('admin.commentsOff') }}
+          </button>
+        </div>
+      </div>
+
+      <!-- AI Settings -->
+      <div class="field">
+        <label class="label">{{ t('admin.aiSettings') }}</label>
+        <div class="space-y-2 rounded-xl border border-border p-4">
+          <div>
+            <label class="mb-1 block text-xs text-text-muted">{{ t('admin.aiApiUrl') }}</label>
+            <input
+              v-model="aiApiUrl"
+              type="url"
+              :placeholder="t('admin.aiApiUrlPlaceholder')"
+              class="!rounded-lg text-sm"
+            />
+          </div>
+          <div>
+            <label class="mb-1 block text-xs text-text-muted">{{ t('admin.aiApiKey') }}</label>
+            <input
+              v-model="aiApiKey"
+              type="password"
+              autocomplete="new-password"
+              :placeholder="aiApiKeyPlaceholder || t('admin.aiApiKeyPlaceholder')"
+              class="!rounded-lg text-sm"
+            />
+          </div>
+          <div>
+            <label class="mb-1 block text-xs text-text-muted">{{ t('admin.aiModel') }}</label>
+            <input
+              v-model="aiModel"
+              type="text"
+              :placeholder="t('admin.aiModelPlaceholder')"
+              class="!rounded-lg text-sm"
+            />
+          </div>
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            <button
+              type="button"
+              class="button is-primary !rounded-lg text-sm"
+              :disabled="bAiSaving"
+              @click="saveAiSettings"
+            >
+              {{ bAiSaving ? t('common.loading') : t('common.save') }}
+            </button>
+            <button
+              type="button"
+              class="button !rounded-lg text-sm"
+              :disabled="bAiTesting || bAiSaving"
+              @click="testAiSettings"
+            >
+              <span v-if="bAiTesting" class="loading-spinner" />
+              {{ bAiTesting ? t('admin.aiTesting') : t('admin.aiTest') }}
+            </button>
+            <span v-if="bAiSaved" class="text-xs text-green-500">{{ t('admin.aiSaved') }}</span>
+          </div>
+          <!-- Test result -->
+          <div v-if="aiTestResult !== null" class="mt-2 rounded-lg px-3 py-2 text-sm"
+            :class="aiTestResult.ok
+              ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+              : 'bg-destructive/10 text-destructive'"
+          >
+            <span v-if="aiTestResult.ok">{{ t('admin.aiTestOk') }}</span>
+            <span v-else>{{ t('admin.aiTestFail') }}: {{ aiTestResult.error }}</span>
+          </div>
         </div>
       </div>
     </div>

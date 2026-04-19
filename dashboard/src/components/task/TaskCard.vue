@@ -6,14 +6,12 @@ import TaskRow from '@/components/task/TaskRow.vue';
 import type { Task } from '@/@types/index';
 
 // -------------------------------------------------- Props --------------------------------------------------
-
 const props = defineProps<{
   task: Task;
   subtaskCount?: number;
 }>();
 
 // -------------------------------------------------- Emits --------------------------------------------------
-
 defineEmits<{
   (event: 'toggleDone', task: Task): void;
   (event: 'open', task: Task): void;

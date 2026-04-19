@@ -1,5 +1,6 @@
 <script setup lang="ts">
 // node_modules
+import { Plus } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
@@ -15,24 +16,15 @@ import type { Task } from '@/@types/index';
 defineOptions({ name: 'SubTaskList' });
 
 // -------------------------------------------------- Props --------------------------------------------------
-
 const props = defineProps<{
   parentTask: Task;
   listId: string;
   depth: number;
-  allowOpen?: boolean;
   /** Tighter layout inside task modal (no top divider, compact add row). */
   embedded?: boolean;
 }>();
 
-// -------------------------------------------------- Emits --------------------------------------------------
-
-defineEmits<{
-  (event: 'open', task: Task): void;
-}>();
-
 // -------------------------------------------------- Data --------------------------------------------------
-
 const tasksStore = useTasksStore();
 const { t } = useI18n();
 const newTitle = ref('');
@@ -40,8 +32,7 @@ const newTitle = ref('');
 const subtasks = computed(() => tasksStore.subTasksOf(props.parentTask.id));
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-async function addSubtask(): Promise<void> {
+const addSubtask = async (): Promise<void> => {
   const title = newTitle.value.trim();
   if (!title) {
     return;
@@ -52,51 +43,58 @@ async function addSubtask(): Promise<void> {
     parentTaskId: props.parentTask.id,
   });
   newTitle.value = '';
-}
+};
 
-async function onToggle(task: Task): Promise<void> {
+/** keyup + Enter: mobile WebKit often skips keydown for the IME action key; avoid firing during IME composition. */
+const onSubtaskAddKeyup = (e: KeyboardEvent): void => {
+  if (e.key !== 'Enter' || e.isComposing) {
+    return;
+  }
+  e.preventDefault();
+  void addSubtask();
+};
+
+const onToggle = async (task: Task): Promise<void> => {
   await tasksStore.toggleDone(task.id);
-}
+};
 
-async function onDelete(task: Task): Promise<void> {
+const onDelete = async (task: Task): Promise<void> => {
   await tasksStore.deleteTask(task.id);
-}
+};
 </script>
 
 <template>
-  <div :class="depth === 0 ? (embedded ? 'pt-0' : 'border-t border-border/50 pt-2') : 'mt-1'">
+  <div :class="depth === 0 ? (embedded ? 'pt-0' : 'border-t border-border/50 pt-0.5') : 'mt-0.5'">
     <template v-for="st in subtasks" :key="st.id">
       <SubTaskRow
         :task="st"
         :depth="depth"
-        :allow-open="props.allowOpen !== false"
         @toggle-done="onToggle"
-        @open="$emit('open', $event)"
         @delete="onDelete"
       />
     </template>
     <div
       v-if="depth === 0"
-      class="mt-2 flex items-center gap-2"
+      class="mt-0.5 flex items-center gap-1"
       :style="{ paddingLeft: embedded ? '0' : `${16 + depth * 16}px` }"
     >
       <input
         v-model="newTitle"
-        type="text"
-        class="flex-1"
+        type="search"
+        autocomplete="off"
+        class="min-w-0 flex-1 !min-h-0 !py-0.5 appearance-none [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+        enterkeyhint="done"
         :placeholder="embedded ? t('task.addSubtaskPlaceholder') : t('task.addSubtask')"
-        @keydown.enter.prevent="addSubtask"
+        @keyup="onSubtaskAddKeyup"
       />
-      <span v-if="embedded" class="hidden shrink-0 text-[10px] font-medium uppercase tracking-wide text-text-muted sm:inline">
-        {{ t('task.pressEnter') }}
-      </span>
       <button
-        v-else
         type="button"
-        class="button is-primary shrink-0"
+        class="button is-primary is-icon !h-6.5 !w-6.5 shrink-0"
+        :aria-label="t('task.addSubtask')"
+        :title="t('task.addSubtask')"
         @click="addSubtask"
       >
-        {{ t('task.addSubtask') }}
+        <Plus class="h-4 w-4" />
       </button>
     </div>
   </div>

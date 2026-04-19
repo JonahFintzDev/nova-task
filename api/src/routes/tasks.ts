@@ -80,7 +80,7 @@ export async function tasksRoutes(fastify: FastifyInstance): Promise<void> {
     async (request, reply) => {
       const userId = request.jwtUser!.userId;
       const { id } = request.params as { id: string };
-      const task = await db.findTask(id, userId);
+      const task = await db.findTask(id, userId, true);
       if (!task) {
         await reply.code(404).send({ error: 'Task not found' });
         return;
@@ -103,6 +103,7 @@ export async function tasksRoutes(fastify: FastifyInstance): Promise<void> {
           priority: Type.Optional(priorityValues),
           parentTaskId: Type.Optional(Type.Union([Type.String(), Type.Null()])),
           tagIds: Type.Optional(Type.Array(Type.String())),
+          reminderOffset: Type.Optional(Type.Union([Type.Integer({ minimum: 0 }), Type.Null()])),
         }),
       },
     },
@@ -117,6 +118,7 @@ export async function tasksRoutes(fastify: FastifyInstance): Promise<void> {
         priority?: Priority;
         parentTaskId?: string | null;
         tagIds?: string[];
+        reminderOffset?: number | null;
       };
       const parentTaskId =
         typeof body.parentTaskId === 'string'
@@ -139,10 +141,11 @@ export async function tasksRoutes(fastify: FastifyInstance): Promise<void> {
         priority: body.priority,
         parentTaskId,
         tagIds: body.tagIds,
+        reminderOffset: body.reminderOffset,
       });
       if (!task) {
         if (parentTaskId) {
-          const listExists = await db.findList(body.listId, userId);
+          const listExists = await db.findList(body.listId, userId, true);
           await reply
             .code(listExists ? 400 : 404)
             .send({
@@ -175,6 +178,7 @@ export async function tasksRoutes(fastify: FastifyInstance): Promise<void> {
           listId: Type.Optional(Type.String()),
           parentTaskId: Type.Optional(Type.Union([Type.String(), Type.Null()])),
           tagIds: Type.Optional(Type.Array(Type.String())),
+          reminderOffset: Type.Optional(Type.Union([Type.Integer({ minimum: 0 }), Type.Null()])),
         }),
       },
     },
@@ -270,7 +274,7 @@ export async function tasksRoutes(fastify: FastifyInstance): Promise<void> {
     async (request, reply) => {
       const userId = request.jwtUser!.userId;
       const { listId } = request.body as { listId: string };
-      const list = await db.findList(listId, userId);
+      const list = await db.findList(listId, userId, true);
       if (!list) {
         await reply.code(404).send({ error: 'List not found' });
         return;

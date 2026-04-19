@@ -9,7 +9,6 @@ import { priorityBadgeClass, priorityLabel } from '@/lib/utils';
 import type { Priority } from '@/@types/index';
 
 // -------------------------------------------------- Props --------------------------------------------------
-
 const props = defineProps<{
   priority: Priority;
 }>();

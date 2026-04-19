@@ -5,6 +5,9 @@ import { computed, ref } from 'vue';
 // classes
 import { listApi } from '@/classes/api';
 
+// lib
+import { getListsSnapshot, setListsSnapshot } from '@/lib/pwa-offline-db';
+
 // types
 import type { List } from '@/@types/index';
 
@@ -29,7 +32,16 @@ export const useListsStore = defineStore('lists', () => {
   }
 
   async function fetchLists(): Promise<void> {
-    lists.value = await listApi.list();
+    try {
+      lists.value = await listApi.list();
+      await setListsSnapshot(lists.value);
+    } catch {
+      const cached = await getListsSnapshot();
+      if (cached?.length) {
+        lists.value = cached;
+      }
+      // Keep existing in-memory lists when network and cache both fail.
+    }
   }
 
   async function createList(payload: Partial<List> & { title: string }): Promise<List> {

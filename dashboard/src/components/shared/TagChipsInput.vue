@@ -9,26 +9,23 @@ import { tagPillStyles, tagSuggestionStyles } from '@/lib/tagColors';
 import type { Tag } from '@/@types/index';
 
 // -------------------------------------------------- Props --------------------------------------------------
-
 const props = defineProps<{
   modelValue: string[];
   allTags: Tag[];
+  disabled?: boolean;
 }>();
 
 // -------------------------------------------------- Emits --------------------------------------------------
-
 const emit = defineEmits<{
   (event: 'update:modelValue', value: string[]): void;
   (event: 'create', name: string): void;
 }>();
 
 // -------------------------------------------------- Data --------------------------------------------------
-
 const input = ref('');
 const themeMode = useDataTheme();
 
 // -------------------------------------------------- Computed --------------------------------------------------
-
 const selectedTags = computed(() => {
   return props.allTags.filter((tag) => props.modelValue.includes(tag.id));
 });
@@ -45,31 +42,39 @@ const suggestions = computed(() => {
 });
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-function addTagId(tagId: string): void {
+const addTagId = (tagId: string): void => {
+  if (props.disabled) {
+    return;
+  }
   if (props.modelValue.includes(tagId)) {
     return;
   }
   emit('update:modelValue', [...props.modelValue, tagId]);
   input.value = '';
-}
+};
 
-function removeTagId(tagId: string): void {
+const removeTagId = (tagId: string): void => {
+  if (props.disabled) {
+    return;
+  }
   emit(
     'update:modelValue',
     props.modelValue.filter((id) => id !== tagId),
   );
-}
+};
 
-function pillStyle(tag: Tag): Record<string, string> {
+const pillStyle = (tag: Tag): Record<string, string> => {
   return tagPillStyles(tag, themeMode.value);
-}
+};
 
-function suggestionStyle(tag: Tag): Record<string, string> {
+const suggestionStyle = (tag: Tag): Record<string, string> => {
   return tagSuggestionStyles(tag, themeMode.value);
-}
+};
 
-function onEnter(): void {
+const onEnter = (): void => {
+  if (props.disabled) {
+    return;
+  }
   const term = input.value.trim();
   if (!term) {
     return;
@@ -81,7 +86,7 @@ function onEnter(): void {
   }
   emit('create', term);
   input.value = '';
-}
+};
 </script>
 
 <template>
@@ -98,6 +103,7 @@ function onEnter(): void {
           type="button"
           class="opacity-70 hover:opacity-100"
           style="color: inherit"
+          :disabled="props.disabled"
           @click="removeTagId(tag.id)"
         >
           ×
@@ -107,6 +113,7 @@ function onEnter(): void {
     <input
       v-model="input"
       type="text"
+      :disabled="props.disabled"
       :placeholder="'Tag…'"
       @keydown.enter.prevent="onEnter"
     />
@@ -116,6 +123,7 @@ function onEnter(): void {
         :key="tag.id"
         type="button"
         class="rounded-md border px-2 py-0.5 hover:brightness-110"
+        :disabled="props.disabled"
         :style="suggestionStyle(tag)"
         @click="addTagId(tag.id)"
       >

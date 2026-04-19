@@ -1,0 +1,2 @@
+ALTER TABLE "List"
+ADD COLUMN "commentsEnabled" BOOLEAN NOT NULL DEFAULT true;

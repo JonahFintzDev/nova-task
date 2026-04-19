@@ -1,15 +1,18 @@
 <script setup lang="ts">
+// -------------------------------------------------- Types --------------------------------------------------
 type MultiSelectOption = {
   value: string;
   label: string;
 };
 
+// -------------------------------------------------- Props --------------------------------------------------
 const props = defineProps<{
   modelValue: string;
   options: MultiSelectOption[];
   ariaLabel?: string;
 }>();
 
+// -------------------------------------------------- Emits --------------------------------------------------
 const emit = defineEmits<{
   (event: 'update:modelValue', value: string): void;
 }>();
@@ -25,7 +28,7 @@ const emit = defineEmits<{
       v-for="option in props.options"
       :key="option.value"
       type="button"
-      class="flex h-7 min-h-7 max-h-7 min-w-0 w-fit flex-1 items-center justify-center rounded px-4 text-xs font-medium transition-colors"
+      class="flex h-7 min-h-7 max-h-7 min-w-0 w-fit items-center justify-center rounded px-4 text-xs font-medium transition-colors"
       :class="
         option.value === props.modelValue
           ? 'bg-primary/20 text-primary'

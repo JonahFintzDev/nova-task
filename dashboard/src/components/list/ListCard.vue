@@ -6,13 +6,11 @@ import { useI18n } from 'vue-i18n';
 import type { List } from '@/@types/index';
 
 // -------------------------------------------------- Props --------------------------------------------------
-
 const props = defineProps<{
   list: List;
 }>();
 
 // -------------------------------------------------- Emits --------------------------------------------------
-
 defineEmits<{
   (event: 'click', list: List): void;
 }>();

@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 // classes
-import { authApi, getStoredToken, setStoredToken } from '@/classes/api';
+import { appWs, authApi, getStoredToken, setStoredToken } from '@/classes/api';
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(getStoredToken());
@@ -35,6 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAdmin.value = false;
     validated.value = false;
     setStoredToken(null);
+    appWs.disconnect();
   }
 
   async function validate(): Promise<boolean> {
@@ -51,6 +52,7 @@ export const useAuthStore = defineStore('auth', () => {
     userId.value = response.userId ?? null;
     isAdmin.value = response.isAdmin;
     validated.value = true;
+    appWs.connect();
     return true;
   }
 

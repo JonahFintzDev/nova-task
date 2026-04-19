@@ -8,7 +8,6 @@ import { useI18n } from 'vue-i18n';
 import { formatDueDate, isDueSoon, isDueToday, isOverdue } from '@/lib/utils';
 
 // -------------------------------------------------- Props --------------------------------------------------
-
 const props = defineProps<{
   dueDate: string | null;
   dueDateHasTime: boolean;
@@ -18,7 +17,6 @@ const props = defineProps<{
 const { locale } = useI18n();
 
 // -------------------------------------------------- Computed --------------------------------------------------
-
 const label = computed(() => formatDueDate(props.dueDate, props.dueDateHasTime, locale.value));
 
 const badgeClass = computed(() => {

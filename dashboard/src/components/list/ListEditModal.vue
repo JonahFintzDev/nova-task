@@ -14,36 +14,34 @@ import { useListsStore } from '@/stores/lists';
 
 // types
 import type { List } from '@/@types/index';
+import { healthApi } from '@/classes/api';
 
 // -------------------------------------------------- Props --------------------------------------------------
-
 const props = defineProps<{
   isOpen: boolean;
   list?: List | null;
 }>();
 
 // -------------------------------------------------- Emits --------------------------------------------------
-
 const emit = defineEmits<{
   (event: 'close'): void;
   (event: 'saved', list: List): void;
 }>();
 
 // -------------------------------------------------- Store --------------------------------------------------
-
 const listsStore = useListsStore();
 const { t } = useI18n();
 
 // -------------------------------------------------- Data --------------------------------------------------
-
 const title = ref('');
 const category = ref('');
 const color = ref<string | null>(null);
 const icon = ref<string | null>(null);
 const bSaving = ref(false);
+const bCommentsEnabled = ref(true);
+const bGlobalCommentsEnabled = ref(true);
 
 // -------------------------------------------------- Computed --------------------------------------------------
-
 const categoryOptions = computed(() => {
   const set = new Set<string>();
   for (const list of listsStore.lists) {
@@ -55,33 +53,39 @@ const categoryOptions = computed(() => {
 });
 
 // -------------------------------------------------- Watchers --------------------------------------------------
-
 watch(
   () => props.isOpen,
-  (open) => {
+  async (open) => {
     if (open) {
+      try {
+        const health = await healthApi.check();
+        bGlobalCommentsEnabled.value = health.commentsEnabled;
+      } catch {
+        bGlobalCommentsEnabled.value = true;
+      }
       if (props.list) {
         title.value = props.list.title;
         category.value = props.list.category ?? '';
         color.value = props.list.color;
         icon.value = props.list.icon;
+        bCommentsEnabled.value = props.list.commentsEnabled;
       } else {
         title.value = '';
         category.value = '';
         color.value = null;
         icon.value = null;
+        bCommentsEnabled.value = true;
       }
     }
   },
 );
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-function close(): void {
+const close = (): void => {
   emit('close');
-}
+};
 
-async function save(): Promise<void> {
+const save = async (): Promise<void> => {
   if (!title.value.trim()) {
     return;
   }
@@ -93,6 +97,7 @@ async function save(): Promise<void> {
         category: category.value.trim() || null,
         color: color.value,
         icon: icon.value,
+        commentsEnabled: bCommentsEnabled.value,
       });
       const updated = listsStore.listById(props.list.id);
       if (updated) {
@@ -104,6 +109,7 @@ async function save(): Promise<void> {
         category: category.value.trim() || null,
         color: color.value,
         icon: icon.value,
+        commentsEnabled: bCommentsEnabled.value,
       });
       emit('saved', created);
     }
@@ -111,7 +117,7 @@ async function save(): Promise<void> {
   } finally {
     bSaving.value = false;
   }
-}
+};
 </script>
 
 <template>
@@ -171,6 +177,36 @@ async function save(): Promise<void> {
               </button>
             </div>
           </div>
+        </div>
+        <div class="field">
+          <label
+            class="label !mb-2 !text-[11px] !font-semibold !uppercase !tracking-[0.18em] !text-text-muted"
+          >
+            {{ t('list.comments') }}
+          </label>
+          <div class="inline-flex rounded-md border border-border p-0.5">
+            <button
+              type="button"
+              class="button !h-9 !max-h-9 !min-h-9 shrink-0 border-0 px-4 py-0 text-sm"
+              :class="bCommentsEnabled ? 'is-primary' : 'is-transparent'"
+              :disabled="!bGlobalCommentsEnabled"
+              @click="bCommentsEnabled = true"
+            >
+              {{ t('list.commentsOn') }}
+            </button>
+            <button
+              type="button"
+              class="button !h-9 !max-h-9 !min-h-9 shrink-0 border-0 px-4 py-0 text-sm"
+              :class="!bCommentsEnabled ? 'is-primary' : 'is-transparent'"
+              :disabled="!bGlobalCommentsEnabled"
+              @click="bCommentsEnabled = false"
+            >
+              {{ t('list.commentsOff') }}
+            </button>
+          </div>
+          <p v-if="!bGlobalCommentsEnabled" class="mt-2 text-xs text-text-muted">
+            {{ t('list.commentsAdminDisabled') }}
+          </p>
         </div>
         <div class="field">
           <label

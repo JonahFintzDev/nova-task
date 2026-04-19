@@ -1,36 +1,57 @@
 <script setup lang="ts">
 // node_modules
-import { onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 // classes
 import { getApiReachable, subscribeApiReachable } from '@/classes/api';
 
-// -------------------------------------------------- Data --------------------------------------------------
+// lib
+import { pendingTaskMutations } from '@/lib/pwa-offline-tasks';
 
+// -------------------------------------------------- Data --------------------------------------------------
 const { t } = useI18n();
-const bOnline = ref(getApiReachable());
-let unsubscribe: (() => void) | null = null;
+const bApiReachable = ref(getApiReachable());
+const bBrowserOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true);
+let unsubscribeApi: (() => void) | null = null;
+
+// -------------------------------------------------- Computed --------------------------------------------------
+const bWorkingOffline = computed(() => !bBrowserOnline.value || !bApiReachable.value);
+
+// -------------------------------------------------- Methods --------------------------------------------------
+const onBrowserOffline = (): void => {
+  bBrowserOnline.value = false;
+};
+
+const onBrowserOnline = (): void => {
+  bBrowserOnline.value = true;
+};
 
 // -------------------------------------------------- Lifecycle --------------------------------------------------
-
 onMounted(() => {
-  unsubscribe = subscribeApiReachable((online) => {
-    bOnline.value = online;
+  unsubscribeApi = subscribeApiReachable((online) => {
+    bApiReachable.value = online;
   });
+  window.addEventListener('offline', onBrowserOffline);
+  window.addEventListener('online', onBrowserOnline);
 });
 
 onUnmounted(() => {
-  unsubscribe?.();
+  unsubscribeApi?.();
+  window.removeEventListener('offline', onBrowserOffline);
+  window.removeEventListener('online', onBrowserOnline);
 });
 </script>
 
 <template>
   <div
-    v-if="!bOnline"
-    class="border-b border-warning/30 bg-warning/10 px-4 py-2 text-center text-sm text-warning"
+    v-if="bWorkingOffline"
+    class="flex flex-col gap-0.5 border-b border-border bg-muted/30 px-4 py-1.5 text-center text-xs text-text-muted"
     role="status"
   >
-    {{ t('common.offline') }}
+    <span>{{ t('common.offlineBannerTitle') }}</span>
+    <span v-if="pendingTaskMutations > 0" class="text-[11px] text-text-muted/90">
+      {{ t('common.offlinePendingSync', { n: pendingTaskMutations }) }}
+    </span>
   </div>
 </template>

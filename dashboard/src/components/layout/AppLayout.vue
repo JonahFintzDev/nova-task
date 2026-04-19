@@ -21,7 +21,6 @@ import { useTasksStore } from '@/stores/tasks';
 import type { Task } from '@/@types/index';
 
 // -------------------------------------------------- Data --------------------------------------------------
-
 const route = useRoute();
 const tasksStore = useTasksStore();
 const { t } = useI18n();
@@ -31,7 +30,6 @@ const searchTask = ref<Task | null>(null);
 const bTaskModalOpen = ref(false);
 
 // -------------------------------------------------- Computed --------------------------------------------------
-
 const pageTitle = computed(() => {
   const name = route.name;
   if (name === 'home') {
@@ -53,35 +51,40 @@ const pageTitle = computed(() => {
 });
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-function openNavDrawer(): void {
+const openNavDrawer = (): void => {
   navSidebarRef.value?.openDrawer();
-}
+};
 
-function onGlobalKey(event: KeyboardEvent): void {
+const onGlobalKey = (event: KeyboardEvent): void => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault();
     bSearchOpen.value = true;
   }
-}
+};
 
-async function onSearchTask(task: Task): Promise<void> {
+const onSearchTask = async (task: Task): Promise<void> => {
   searchTask.value = await tasksStore.fetchTask(task.id);
   bTaskModalOpen.value = true;
-}
+};
 
-async function onSearchOpenNestedTask(task: Task): Promise<void> {
+const onSearchOpenNestedTask = async (task: Task): Promise<void> => {
   searchTask.value = await tasksStore.fetchTask(task.id);
-}
+};
+
+// -------------------------------------------------- Outbox sync --------------------------------------------------
+const onOutboxFlushed = (): void => {
+  void tasksStore.fetchTasks();
+};
 
 // -------------------------------------------------- Lifecycle --------------------------------------------------
-
 onMounted(() => {
   window.addEventListener('keydown', onGlobalKey);
+  window.addEventListener('nova-task-outbox-flushed', onOutboxFlushed);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onGlobalKey);
+  window.removeEventListener('nova-task-outbox-flushed', onOutboxFlushed);
 });
 </script>
 
@@ -91,7 +94,7 @@ onUnmounted(() => {
     <div class="flex min-w-0 flex-1 flex-col lg:ms-0">
       <ApiOfflineBanner />
       <NavTopBar :title="pageTitle" @search="bSearchOpen = true" @menu="openNavDrawer" />
-      <main class="min-h-0 flex-1 overflow-y-auto">
+      <main class="relative z-0 min-h-0 flex-1 overflow-y-auto">
         <RouterView v-slot="{ Component }">
           <Transition mode="out-in" :css="false" @enter="pageEnter" @leave="pageLeave">
             <component :is="Component" :key="route.fullPath" />

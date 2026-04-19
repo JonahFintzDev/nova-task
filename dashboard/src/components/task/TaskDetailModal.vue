@@ -1,19 +1,28 @@
 <script setup lang="ts">
 // node_modules
 import { ChevronDown, FolderOpen, X } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 // lib
 import { markdownToSafeHtml } from '@/lib/markdown';
+import { browserReportsOnline } from '@/lib/pwa-offline-tasks';
 import { isOverdue } from '@/lib/utils';
+
+// classes
+import { healthApi, recurrenceApi } from '@/classes/api';
+import { prefersReducedMotion } from '@/lib/gsap';
 
 // components
 import GsapModal from '@/components/shared/GsapModal.vue';
+import AiSuggestBox from '@/components/task/AiSuggestBox.vue';
 import ButtonMultiselect from '@/components/shared/ButtonMultiselect.vue';
 import DateTimePicker from '@/components/shared/DateTimePicker.vue';
+import RecurrencePicker from '@/components/task/RecurrencePicker.vue';
 import SubTaskList from '@/components/task/SubTaskList.vue';
 import TagChipsInput from '@/components/shared/TagChipsInput.vue';
+import CommentsSection from '@/components/CommentsSection.vue';
+import TaskAssign from '@/components/TaskAssign.vue';
 
 // stores
 import { useListsStore } from '@/stores/lists';
@@ -21,19 +30,19 @@ import { useTagsStore } from '@/stores/tags';
 import { useTasksStore } from '@/stores/tasks';
 
 // types
-import type { Priority, Task } from '@/@types/index';
+import type { Priority, RecurringRule, Task } from '@/@types/index';
 
 // -------------------------------------------------- Props --------------------------------------------------
-
 const props = defineProps<{
   isOpen: boolean;
   task?: Task | null;
   listId?: string;
   parentTaskId?: string | null;
+  initialTitle?: string;
+  canEdit?: boolean;
 }>();
 
 // -------------------------------------------------- Emits --------------------------------------------------
-
 const emit = defineEmits<{
   (event: 'close'): void;
   (event: 'saved', task: Task): void;
@@ -41,27 +50,49 @@ const emit = defineEmits<{
 }>();
 
 // -------------------------------------------------- Store --------------------------------------------------
-
 const tasksStore = useTasksStore();
 const listsStore = useListsStore();
 const tagsStore = useTagsStore();
 const { t } = useI18n();
 
 // -------------------------------------------------- Data --------------------------------------------------
-
 const title = ref('');
 const description = ref('');
 const dueAt = ref<Date | null>(null);
+const dueDateHasTime = ref(false);
 const priority = ref<Priority>('NONE');
 const selectedTagIds = ref<string[]>([]);
 const bSaving = ref(false);
 const descriptionMode = ref<'edit' | 'preview'>('edit');
 const bPriorityMenuOpen = ref(false);
 const priorityMenuRoot = ref<HTMLElement | null>(null);
+const bReminderMenuOpen = ref(false);
+const reminderMenuRoot = ref<HTMLElement | null>(null);
+
+// Recurrence
+const currentRule = ref<RecurringRule | null>(null);
+const pendingRule = ref<
+  { frequency: RecurringRule['frequency']; interval: number } | null | undefined
+>(undefined);
+
+// Reminder
+const reminderOffset = ref<number | null>(null);
+const commentsEnabled = ref(true);
+
+const REMINDER_OPTIONS: { label: string; value: number | null }[] = [
+  { label: 'task.reminderNone', value: null },
+  { label: 'task.reminder15m', value: 15 },
+  { label: 'task.reminder30m', value: 30 },
+  { label: 'task.reminder1h', value: 60 },
+  { label: 'task.reminder3h', value: 180 },
+  { label: 'task.reminder1d', value: 1440 },
+  { label: 'task.reminder2d', value: 2880 },
+  { label: 'task.reminder1w', value: 10080 },
+];
 
 const PRIORITIES: readonly Priority[] = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 
-function normalizeListId(value: unknown): string {
+const normalizeListId = (value: unknown): string => {
   if (typeof value === 'string') {
     return value;
   }
@@ -72,7 +103,7 @@ function normalizeListId(value: unknown): string {
     }
   }
   return '';
-}
+};
 
 interface FormSnapshot {
   title: string;
@@ -83,9 +114,9 @@ interface FormSnapshot {
 }
 
 const snapshot = ref<FormSnapshot | null>(null);
+const titleInputRef = ref<HTMLInputElement | null>(null);
 
 // -------------------------------------------------- Computed --------------------------------------------------
-
 const effectiveListId = computed(() => {
   const fromTask = props.task?.listId;
   if (fromTask) {
@@ -99,6 +130,8 @@ const effectiveListId = computed(() => {
 });
 
 const currentList = computed(() => listsStore.listById(effectiveListId.value));
+const canEditTask = computed(() => props.canEdit !== false);
+const commentsAvailableForList = computed(() => currentList.value?.commentsEnabled !== false);
 
 const breadcrumbParts = computed(() => {
   const list = currentList.value;
@@ -110,6 +143,13 @@ const breadcrumbParts = computed(() => {
 });
 
 const renderedDescriptionHtml = computed(() => markdownToSafeHtml(description.value));
+
+const isListShared = computed(() => currentList.value?.isShared === true);
+
+const reminderLabel = computed(() => {
+  const opt = REMINDER_OPTIONS.find((o) => o.value === reminderOffset.value);
+  return opt ? t(opt.label) : t('task.reminderNone');
+});
 
 const isTaskOverdue = computed(() => {
   if (!dueAt.value) {
@@ -151,15 +191,35 @@ const descriptionModeOptions = computed(() => [
 ]);
 
 // -------------------------------------------------- Watchers --------------------------------------------------
-
 watch(
-  () => [props.isOpen, props.task?.id ?? '', props.listId ?? '', props.parentTaskId ?? ''] as const,
+  () =>
+    [
+      props.isOpen,
+      props.task?.id ?? '',
+      props.listId ?? '',
+      props.parentTaskId ?? '',
+      props.initialTitle ?? '',
+    ] as const,
   async () => {
     if (!props.isOpen) {
       return;
     }
-    await tagsStore.fetchTags();
-    await listsStore.fetchLists();
+    try {
+      const health = await healthApi.check();
+      commentsEnabled.value = health.commentsEnabled;
+    } catch {
+      commentsEnabled.value = true;
+    }
+    try {
+      await tagsStore.fetchTags();
+    } catch {
+      /* offline: keep existing tag list */
+    }
+    try {
+      await listsStore.fetchLists();
+    } catch {
+      /* offline: keep cached lists */
+    }
     if (props.task) {
       title.value = props.task.title;
       description.value = props.task.description ?? '';
@@ -167,29 +227,66 @@ watch(
         const d = new Date(props.task.dueDate);
         if (Number.isNaN(d.getTime())) {
           dueAt.value = null;
+          dueDateHasTime.value = false;
         } else {
           dueAt.value = d;
+          dueDateHasTime.value = props.task.dueDateHasTime;
         }
       } else {
         dueAt.value = null;
+        dueDateHasTime.value = false;
       }
+
       priority.value = props.task.priority;
       selectedTagIds.value = props.task.tags.map((tag) => tag.id);
+      // Load recurrence rule
+      currentRule.value = props.task.recurringRule ?? null;
+      pendingRule.value = undefined;
+      reminderOffset.value = props.task.reminderOffset ?? null;
     } else {
-      title.value = '';
+      title.value = props.initialTitle ?? '';
       description.value = '';
       dueAt.value = null;
+      dueDateHasTime.value = false;
       priority.value = 'NONE';
       selectedTagIds.value = [];
+      currentRule.value = null;
+      pendingRule.value = undefined;
+      reminderOffset.value = null;
     }
     descriptionMode.value = description.value.trim() ? 'preview' : 'edit';
     captureSnapshot();
+    if (!props.task && canEditTask.value) {
+      void focusTitleForNewTask();
+    }
   },
 );
 
-// -------------------------------------------------- Methods --------------------------------------------------
+async function focusTitleForNewTask(): Promise<void> {
+  await nextTick();
+  const apply = (): void => {
+    const el = titleInputRef.value;
+    if (!el || props.task || !props.isOpen || !canEditTask.value) {
+      return;
+    }
+    el.focus({ preventScroll: true });
+    if (el.value.length > 0) {
+      el.select();
+    }
+  };
+  if (prefersReducedMotion()) {
+    requestAnimationFrame(apply);
+    return;
+  }
+  window.setTimeout(apply, 320);
+}
 
-function captureSnapshot(): void {
+watch(dueAt, (value) => {
+  if (value === null) dueDateHasTime.value = false;
+});
+
+// -------------------------------------------------- Methods --------------------------------------------------
+const captureSnapshot = (): void => {
   snapshot.value = {
     title: title.value,
     description: description.value,
@@ -197,9 +294,9 @@ function captureSnapshot(): void {
     priority: priority.value,
     tagIds: [...selectedTagIds.value],
   };
-}
+};
 
-function discardChanges(): void {
+const discardChanges = (): void => {
   const s = snapshot.value;
   if (!s) {
     return;
@@ -210,64 +307,98 @@ function discardChanges(): void {
   priority.value = s.priority;
   selectedTagIds.value = [...s.tagIds];
   descriptionMode.value = description.value.trim() ? 'preview' : 'edit';
-}
+};
 
-function close(): void {
+const close = (): void => {
   emit('close');
-}
+};
 
-function duePayload(): string | null {
+const duePayload = (): string | null => {
   if (!dueAt.value) {
     return null;
   }
   return dueAt.value.toISOString();
-}
+};
 
-async function save(): Promise<void> {
+const save = async (): Promise<void> => {
+  if (!canEditTask.value) {
+    return;
+  }
   if (!title.value.trim() || !effectiveListId.value) {
     return;
   }
   bSaving.value = true;
   try {
+    let savedTask: Task;
     if (props.task) {
-      const updated = await tasksStore.updateTask(props.task.id, {
+      savedTask = await tasksStore.updateTask(props.task.id, {
         title: title.value.trim(),
         description: description.value || null,
         dueDate: duePayload(),
-        dueDateHasTime: !!dueAt.value,
+        dueDateHasTime: dueDateHasTime.value,
         priority: priority.value,
         tagIds: selectedTagIds.value,
+        reminderOffset: dueAt.value ? reminderOffset.value : null,
       });
-      emit('saved', updated);
     } else {
-      const created = await tasksStore.createTask({
+      savedTask = await tasksStore.createTask({
         listId: effectiveListId.value,
         title: title.value.trim(),
         description: description.value || null,
         dueDate: duePayload(),
-        dueDateHasTime: !!dueAt.value,
+        dueDateHasTime: dueDateHasTime.value,
         priority: priority.value,
         parentTaskId: props.parentTaskId ?? null,
         tagIds: selectedTagIds.value,
+        reminderOffset: dueAt.value ? reminderOffset.value : null,
       });
-      emit('saved', created);
     }
+    // Persist recurrence rule if changed (requires network)
+    if (pendingRule.value !== undefined && browserReportsOnline()) {
+      if (pendingRule.value === null) {
+        if (currentRule.value) {
+          await recurrenceApi.remove(savedTask.id);
+        }
+      } else {
+        await recurrenceApi.set(savedTask.id, pendingRule.value);
+      }
+    }
+    emit('saved', savedTask);
     close();
   } finally {
     bSaving.value = false;
   }
-}
+};
 
-async function onCreateTag(name: string): Promise<void> {
+const onRecurrenceUpdate = (
+  rule: { frequency: RecurringRule['frequency']; interval: number } | null,
+): void => {
+  if (!canEditTask.value) {
+    return;
+  }
+  pendingRule.value = rule;
+};
+
+const addAiSubtasks = async (titles: string[]): Promise<void> => {
+  if (!props.task || !canEditTask.value) return;
+  for (const t of titles) {
+    await tasksStore.createTask({
+      listId: props.task.listId,
+      title: t,
+      parentTaskId: props.task.id,
+    });
+  }
+};
+
+const onCreateTag = async (name: string): Promise<void> => {
+  if (!canEditTask.value) {
+    return;
+  }
   const tag = await tagsStore.createTag({ name });
   selectedTagIds.value = [...selectedTagIds.value, tag.id];
-}
+};
 
-function onOpenSubTask(task: Task): void {
-  emit('openTask', task);
-}
-
-function priorityLabel(p: Priority): string {
+const priorityLabel = (p: Priority): string => {
   const keys: Record<Priority, string> = {
     NONE: 'priority.none',
     LOW: 'priority.low',
@@ -276,24 +407,27 @@ function priorityLabel(p: Priority): string {
     URGENT: 'priority.urgent',
   };
   return t(keys[p]);
-}
+};
 
-function selectPriority(p: Priority): void {
+const selectPriority = (p: Priority): void => {
   priority.value = p;
   bPriorityMenuOpen.value = false;
-}
+};
 
-function onPriorityMenuDocumentClick(event: MouseEvent): void {
-  if (!bPriorityMenuOpen.value || !priorityMenuRoot.value) {
-    return;
+const onPriorityMenuDocumentClick = (event: MouseEvent): void => {
+  if (bPriorityMenuOpen.value && priorityMenuRoot.value) {
+    if (!priorityMenuRoot.value.contains(event.target as Node)) {
+      bPriorityMenuOpen.value = false;
+    }
   }
-  if (!priorityMenuRoot.value.contains(event.target as Node)) {
-    bPriorityMenuOpen.value = false;
+  if (bReminderMenuOpen.value && reminderMenuRoot.value) {
+    if (!reminderMenuRoot.value.contains(event.target as Node)) {
+      bReminderMenuOpen.value = false;
+    }
   }
-}
+};
 
 // -------------------------------------------------- Lifecycle --------------------------------------------------
-
 onMounted(() => {
   document.addEventListener('click', onPriorityMenuDocumentClick);
 });
@@ -333,18 +467,22 @@ onUnmounted(() => {
           <div class="field !mb-0">
             <label class="sr-only">{{ t('task.title') }}</label>
             <input
+              ref="titleInputRef"
               v-model="title"
               type="text"
+              :readonly="!canEditTask"
               class="!h-10 !max-h-10 !min-h-[40px] !border-0 !bg-transparent !px-0 !py-0 !text-xl !font-bold !leading-none !text-text-primary !ring-0 !outline-none focus:!ring-0"
               :placeholder="t('task.title')"
             />
           </div>
+
           <div>
             <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
               <span class="text-[10px] font-semibold uppercase tracking-wide text-text-muted">
                 {{ t('task.description') }}
               </span>
               <ButtonMultiselect
+                v-if="canEditTask"
                 v-model="descriptionMode"
                 :options="descriptionModeOptions"
                 :aria-label="t('task.description')"
@@ -353,12 +491,13 @@ onUnmounted(() => {
             <textarea
               v-if="descriptionMode === 'edit'"
               v-model="description"
-              class="min-h-[200px] w-full resize-y font-mono text-sm leading-relaxed"
+              :readonly="!canEditTask"
+              class="min-h-[600px] w-full resize-none font-mono text-sm leading-relaxed"
               :placeholder="t('task.descriptionPlaceholder')"
             />
             <div
               v-else
-              class="task-md-preview min-h-[200px] rounded-lg border border-border bg-bg/50 px-3 py-2 text-sm leading-relaxed"
+              class="task-md-preview min-h-[600px] rounded-lg border border-border bg-bg/50 px-3 py-2 text-sm leading-relaxed"
             >
               <div
                 v-if="renderedDescriptionHtml"
@@ -401,13 +540,42 @@ onUnmounted(() => {
               :parent-task="props.task"
               :list-id="props.task.listId"
               :depth="0"
-              :allow-open="true"
               embedded
-              @open="onOpenSubTask"
             />
+            <div v-if="canEditTask" class="mt-3">
+              <AiSuggestBox
+                :list-id="props.task.listId"
+                :task-id="props.task.id"
+                :task-title="title"
+                @add="addAiSubtasks"
+              />
+            </div>
+          </div>
+
+          <!-- Comments -->
+          <div
+            v-if="props.task && commentsEnabled && commentsAvailableForList"
+            class="border-t border-border pt-6"
+          >
+            <CommentsSection :task="props.task" :can-edit="canEditTask" />
           </div>
         </div>
         <aside class="min-w-0 space-y-5 rounded-br-xl bg-bg/20 px-6 py-5">
+          <!-- Assignment (shared lists only) -->
+          <div v-if="props.task && isListShared" class="field">
+            <label
+              class="label !mb-2 !text-[10px] !font-semibold !uppercase !tracking-wide !text-text-muted"
+            >
+              {{ t('task.assignedTo') }}
+            </label>
+            <TaskAssign
+              :task="props.task"
+              :can-assign="canEditTask"
+              @assigned="async () => await tasksStore.fetchTasks()"
+              @unassigned="async () => await tasksStore.fetchTasks()"
+            />
+          </div>
+
           <!-- Priority -->
           <div class="field">
             <label
@@ -417,6 +585,7 @@ onUnmounted(() => {
             </label>
             <div ref="priorityMenuRoot" class="relative hidden md:block">
               <button
+                v-if="canEditTask"
                 type="button"
                 class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-normal bg-bg!"
                 :class="priorityCardClass"
@@ -451,7 +620,8 @@ onUnmounted(() => {
             </div>
             <select
               v-model="priority"
-              class="!w-auto max-w-full min-w-[10rem] !rounded-lg md:hidden"
+              :disabled="!canEditTask"
+              class="w-full !rounded-lg md:hidden"
             >
               <option v-for="p in PRIORITIES" :key="p" :value="p">
                 {{ p === 'URGENT' ? '! ' : '' }}{{ priorityLabel(p) }}
@@ -467,14 +637,71 @@ onUnmounted(() => {
               {{ t('task.dueDate') }}
             </label>
             <div class="mb-2">
-              <DateTimePicker v-model="dueAt" :placeholder="t('task.dueDate')" />
+              <DateTimePicker
+                v-model:date="dueAt"
+                v-model:has-time="dueDateHasTime"
+                :disabled="!canEditTask"
+                :placeholder="t('task.dueDate')"
+              />
             </div>
+
             <span
               v-if="isTaskOverdue"
               class="w-fit rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive"
             >
               {{ t('task.overdue') }}
             </span>
+            <!-- Reminder -->
+            <div v-if="dueAt" class="mt-3">
+              <label
+                class="label !mb-1.5 !text-[10px] !font-semibold !uppercase !tracking-wide !text-text-muted"
+              >
+                {{ t('task.reminder') }}
+              </label>
+              <!-- Desktop custom dropdown -->
+              <div ref="reminderMenuRoot" class="relative hidden md:block">
+                <button
+                  v-if="canEditTask"
+                  type="button"
+                  class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-normal bg-bg! bg-border/40 text-text-muted"
+                  @click.stop="bReminderMenuOpen = !bReminderMenuOpen"
+                >
+                  <span>{{ reminderLabel }}</span>
+                  <ChevronDown class="ms-auto h-4 w-4 shrink-0 opacity-70" />
+                </button>
+                <span v-else class="text-sm text-text-muted">{{ reminderLabel }}</span>
+                <div
+                  v-if="bReminderMenuOpen"
+                  class="absolute left-0 top-full z-20 mt-1 w-full min-w-44 rounded-xl border border-border bg-surface py-1 shadow-lg"
+                  @click.stop
+                >
+                  <button
+                    v-for="opt in REMINDER_OPTIONS"
+                    :key="String(opt.value)"
+                    type="button"
+                    class="block w-full px-3 py-2 text-left text-sm hover:bg-fg/[0.05]"
+                    :class="
+                      opt.value === reminderOffset
+                        ? 'font-normal text-primary'
+                        : 'font-normal text-text-primary'
+                    "
+                    @click="reminderOffset = opt.value; bReminderMenuOpen = false"
+                  >
+                    {{ t(opt.label) }}
+                  </button>
+                </div>
+              </div>
+              <!-- Mobile select -->
+              <select
+                v-model="reminderOffset"
+                :disabled="!canEditTask"
+                class="w-full !rounded-lg md:hidden"
+              >
+                <option v-for="opt in REMINDER_OPTIONS" :key="String(opt.value)" :value="opt.value">
+                  {{ t(opt.label) }}
+                </option>
+              </select>
+            </div>
           </div>
 
           <!-- Tags -->
@@ -487,7 +714,34 @@ onUnmounted(() => {
             <TagChipsInput
               v-model="selectedTagIds"
               :all-tags="tagsStore.tags"
+              :disabled="!canEditTask"
               @create="onCreateTag"
+            />
+          </div>
+
+          <!-- Recurrence -->
+          <div v-if="props.task && !props.task.parentTaskId" class="field">
+            <label
+              class="label !mb-2 !text-[10px] !font-semibold !uppercase !tracking-wide !text-text-muted"
+            >
+              {{ t('recurrence.label') }}
+            </label>
+            <RecurrencePicker
+              :rule="
+                pendingRule !== undefined
+                  ? pendingRule
+                    ? {
+                        ...pendingRule,
+                        id: '',
+                        taskId: props.task.id,
+                        streak: currentRule?.streak ?? 0,
+                        createdAt: '',
+                      }
+                    : null
+                  : currentRule
+              "
+              :task-id="props.task.id"
+              @update="onRecurrenceUpdate"
             />
           </div>
 
@@ -523,6 +777,7 @@ onUnmounted(() => {
       </div>
       <div class="modal-footer justify-between gap-3">
         <button
+          v-if="canEditTask"
           type="button"
           class="button is-transparent text-sm text-text-muted hover:text-text-primary"
           @click="discardChanges"
@@ -534,6 +789,7 @@ onUnmounted(() => {
             {{ t('common.cancel') }}
           </button>
           <button
+            v-if="canEditTask"
             type="button"
             class="button is-primary !rounded-xl"
             :disabled="bSaving"

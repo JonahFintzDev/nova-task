@@ -6,7 +6,6 @@ import { X } from 'lucide-vue-next';
 import GsapModal from '@/components/shared/GsapModal.vue';
 
 // -------------------------------------------------- Props --------------------------------------------------
-
 const props = defineProps<{
   isOpen: boolean;
   title: string;
@@ -16,17 +15,15 @@ const props = defineProps<{
 }>();
 
 // -------------------------------------------------- Emits --------------------------------------------------
-
 const emit = defineEmits<{
   (event: 'close'): void;
   (event: 'confirm'): void;
 }>();
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-function onConfirm(): void {
+const onConfirm = (): void => {
   emit('confirm');
-}
+};
 </script>
 
 <template>

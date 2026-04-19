@@ -1,12 +1,15 @@
 <script setup lang="ts">
 // node_modules
 import { LayoutDashboard, Plus, Settings, Shield } from 'lucide-vue-next';
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink, useRoute } from 'vue-router';
 
 // components
 import ListEditModal from '@/components/list/ListEditModal.vue';
+
+// lib
+import { routeParamToString } from '@/lib/utils';
 
 // stores
 import { useAuthStore } from '@/stores/auth';
@@ -16,20 +19,17 @@ import { useListsStore } from '@/stores/lists';
 import type { List } from '@/@types/index';
 
 // -------------------------------------------------- Store --------------------------------------------------
-
 const listsStore = useListsStore();
 const authStore = useAuthStore();
 const route = useRoute();
 const { t } = useI18n();
 
 // -------------------------------------------------- Data --------------------------------------------------
-
 const bOpen = ref(false);
 const bAddListModal = ref(false);
 const orderedLists = ref<List[]>([]);
 
 // -------------------------------------------------- Watchers --------------------------------------------------
-
 watch(
   () => listsStore.lists,
   (lists) => {
@@ -39,45 +39,64 @@ watch(
 );
 
 // -------------------------------------------------- Lifecycle --------------------------------------------------
-
 onMounted(() => {
   void listsStore.fetchLists();
 });
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-function categoryKey(list: List): string {
+const categoryKey = (list: List): string => {
   return list.category?.trim() || '__uncat__';
-}
+};
 
-function categoryLabelFor(list: List): string {
-  const key = categoryKey(list);
+const categoryLabelForKey = (key: string): string => {
   return key === '__uncat__' ? t('list.uncategorized') : key;
-}
+};
 
-function showCategoryHeading(list: List): boolean {
-  const index = orderedLists.value.findIndex((entry) => entry.id === list.id);
-  if (index <= 0) {
-    return true;
+/** One heading per category; category order follows earliest list sortOrder in that category. */
+const categorySections = computed(() => {
+  const byKey = new Map<string, List[]>();
+  const minOrder = new Map<string, number>();
+
+  for (const list of orderedLists.value) {
+    const key = categoryKey(list);
+    const bucket = byKey.get(key);
+    if (!bucket) {
+      byKey.set(key, [list]);
+      minOrder.set(key, list.sortOrder);
+    } else {
+      bucket.push(list);
+      minOrder.set(key, Math.min(minOrder.get(key)!, list.sortOrder));
+    }
   }
-  const previous = orderedLists.value[index - 1];
-  if (!previous) {
-    return true;
-  }
-  return categoryKey(list) !== categoryKey(previous);
-}
 
-function isFirstList(list: List): boolean {
-  return orderedLists.value.findIndex((entry) => entry.id === list.id) === 0;
-}
+  const keys = [...byKey.keys()].sort((a, b) => {
+    const ao = minOrder.get(a) ?? 0;
+    const bo = minOrder.get(b) ?? 0;
+    if (ao !== bo) {
+      return ao - bo;
+    }
+    return a.localeCompare(b);
+  });
 
-function isListActive(list: List): boolean {
-  return route.name === 'list' && route.params['id'] === list.id;
-}
+  return keys.map((key) => ({
+    key,
+    label: categoryLabelForKey(key),
+    lists: byKey.get(key)!,
+  }));
+});
 
-function openDrawer(): void {
+const isListActive = (list: List): boolean => {
+  return route.name === 'list' && routeParamToString(route.params['id']) === list.id;
+};
+
+const openDrawer = (): void => {
   bOpen.value = true;
-}
+};
+
+/** Collapse the mobile drawer after choosing a destination (no-op on lg where the rail is always visible). */
+const closeMobileDrawer = (): void => {
+  bOpen.value = false;
+};
 
 defineExpose({ openDrawer });
 </script>
@@ -93,6 +112,7 @@ defineExpose({ openDrawer });
       <RouterLink
         to="/"
         class="flex min-h-0 min-w-0 flex-col gap-0 rounded-md px-2 py-1.5 hover:bg-fg/[0.05]"
+        @click="closeMobileDrawer"
       >
         <span class="flex items-center gap-2 font-bold text-text-primary leading-tight">
           <LayoutDashboard class="h-4 w-4 shrink-0 text-primary" />
@@ -113,21 +133,23 @@ defineExpose({ openDrawer });
         to="/"
         class="mb-3 flex min-h-[40px] items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium"
         :class="route.name === 'home' ? 'bg-primary/10 text-primary' : 'text-text-muted hover:bg-fg/[0.05] hover:text-text-primary'"
+        @click="closeMobileDrawer"
       >
         <LayoutDashboard class="h-5 w-5 shrink-0" />
         {{ t('nav.home') }}
       </RouterLink>
       <div class="min-h-0">
-        <template v-for="list in orderedLists" :key="list.id">
+        <template v-for="(section, si) in categorySections" :key="section.key">
           <div>
             <div
-              v-if="showCategoryHeading(list)"
               class="px-3 py-1 text-xs text-text-muted"
-              :class="isFirstList(list) ? '' : 'mt-3'"
+              :class="si === 0 ? '' : 'mt-3'"
             >
-              {{ categoryLabelFor(list) }}
+              {{ section.label }}
             </div>
             <RouterLink
+              v-for="list in section.lists"
+              :key="list.id"
               :to="{ name: 'list', params: { id: list.id } }"
               class="mt-1 flex min-h-[40px] min-w-0 items-center gap-2.5 rounded-lg py-1.5 ps-3 pe-3 text-sm font-medium"
               :class="
@@ -135,6 +157,7 @@ defineExpose({ openDrawer });
                   ? 'bg-primary/10 text-primary'
                   : 'text-text-muted hover:bg-fg/[0.05] hover:text-text-primary'
               "
+              @click="closeMobileDrawer"
             >
               <span
                 v-if="list.icon"
@@ -168,7 +191,10 @@ defineExpose({ openDrawer });
       <button
         type="button"
         class="button is-transparent mt-2 flex h-10 min-h-[40px] w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border px-3 text-sm text-text-muted hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
-        @click="bAddListModal = true"
+        @click="
+          closeMobileDrawer();
+          bAddListModal = true;
+        "
       >
         <Plus class="h-5 w-5 shrink-0 opacity-80" />
         {{ t('list.addList') }}
@@ -178,6 +204,7 @@ defineExpose({ openDrawer });
       <RouterLink
         to="/settings"
         class="flex min-h-[40px] items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-text-muted hover:bg-fg/[0.05] hover:text-text-primary"
+        @click="closeMobileDrawer"
       >
         <Settings class="h-5 w-5 shrink-0" />
         {{ t('nav.settings') }}
@@ -186,6 +213,7 @@ defineExpose({ openDrawer });
         v-if="authStore.isAdmin"
         to="/admin"
         class="flex min-h-[40px] items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-text-muted hover:bg-fg/[0.05] hover:text-text-primary"
+        @click="closeMobileDrawer"
       >
         <Shield class="h-5 w-5 shrink-0" />
         {{ t('nav.admin') }}

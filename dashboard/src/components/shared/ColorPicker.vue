@@ -4,19 +4,16 @@ import { ref, watch } from 'vue';
 import { SwatchesPicker } from 'vue-color';
 
 // -------------------------------------------------- Props --------------------------------------------------
-
 const props = defineProps<{
   modelValue: string | null;
 }>();
 
 // -------------------------------------------------- Emits --------------------------------------------------
-
 const emit = defineEmits<{
   (event: 'update:modelValue', value: string | null): void;
 }>();
 
 // -------------------------------------------------- Data --------------------------------------------------
-
 const palette = [
   ['#0f172a', '#1e293b', '#334155', '#475569', '#64748b', '#94a3b8'],
   ['#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'],
@@ -32,7 +29,6 @@ const palette = [
 const swatchColor = ref(props.modelValue ?? '#4f46e5');
 
 // -------------------------------------------------- Watchers --------------------------------------------------
-
 watch(
   () => props.modelValue,
   (value) => {
@@ -43,11 +39,10 @@ watch(
 );
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-function onSwatchPick(value: string): void {
+const onSwatchPick = (value: string): void => {
   swatchColor.value = value;
   emit('update:modelValue', value);
-}
+};
 </script>
 
 <template>

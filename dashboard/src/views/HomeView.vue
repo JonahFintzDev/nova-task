@@ -1,23 +1,24 @@
 <script setup lang="ts">
 // node_modules
-import { Sparkles } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RouterLink, useRouter } from 'vue-router';
 
 // components
 import GsapModal from '@/components/shared/GsapModal.vue';
-import ListCard from '@/components/list/ListCard.vue';
-import PageHeader from '@/components/layout/PageHeader.vue';
 import PageShell from '@/components/layout/PageShell.vue';
 import TaskDetailModal from '@/components/task/TaskDetailModal.vue';
 import TaskRow from '@/components/task/TaskRow.vue';
+
+// composables
+import { useRefetchWhenReachable } from '@/composables/useRefetchWhenReachable';
 
 // lib
 import { staggerGridItems } from '@/lib/gsap';
 import { isDueSoon, isDueToday, isOverdue } from '@/lib/utils';
 
 // stores
+import { useAuthStore } from '@/stores/auth';
 import { useListsStore } from '@/stores/lists';
 import { useTasksStore } from '@/stores/tasks';
 
@@ -25,14 +26,13 @@ import { useTasksStore } from '@/stores/tasks';
 import type { List, Task } from '@/@types/index';
 
 // -------------------------------------------------- Store --------------------------------------------------
-
 const tasksStore = useTasksStore();
 const listsStore = useListsStore();
+const authStore = useAuthStore();
 const router = useRouter();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 // -------------------------------------------------- Data --------------------------------------------------
-
 const bTaskOpen = ref(false);
 const activeTask = ref<Task | null>(null);
 const bDeleteConfirm = ref(false);
@@ -40,9 +40,24 @@ const taskPendingDelete = ref<Task | null>(null);
 const listsGridRef = ref<HTMLElement | null>(null);
 
 // -------------------------------------------------- Computed --------------------------------------------------
-
 const orderedLists = computed(() =>
   [...listsStore.lists].sort((a, b) => a.sortOrder - b.sortOrder),
+);
+const listOverviewCards = computed(() =>
+  orderedLists.value.map((list) => {
+    const tasksInList = tasksStore.tasks.filter((task) => task.listId === list.id && !task.parentTaskId);
+    const doneCount = tasksInList.filter((task) => task.done).length;
+    const openCount = tasksInList.length - doneCount;
+    const totalCount = tasksInList.length;
+    const completionPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+    return {
+      list,
+      openCount,
+      completionPct,
+      statusLabel: (list.category || t('task.activeTasks')).toUpperCase(),
+      description: list.category || t('list.taskCount', { n: totalCount }),
+    };
+  }),
 );
 
 const overdue = computed(() => {
@@ -56,13 +71,59 @@ const overdue = computed(() => {
 const today = computed(() => tasksStore.dueTodayTasks());
 
 const week = computed(() => tasksStore.dueThisWeekTasks());
+const scheduleTasks = computed(() => {
+  const merged = [...overdue.value, ...today.value, ...week.value];
+  const uniqueById = new Map<string, Task>();
+  for (const task of merged) {
+    if (!uniqueById.has(task.id)) {
+      uniqueById.set(task.id, task);
+    }
+  }
+  return [...uniqueById.values()].sort((a, b) => {
+    const da = a.dueDate ? new Date(a.dueDate).getTime() : Number.POSITIVE_INFINITY;
+    const db = b.dueDate ? new Date(b.dueDate).getTime() : Number.POSITIVE_INFINITY;
+    if (da !== db) {
+      return da - db;
+    }
+    return a.title.localeCompare(b.title);
+  });
+});
+const hasScheduleTasks = computed(() => scheduleTasks.value.length > 0);
+const greetingName = computed(() => authStore.username || t('nav.home'));
+const greetingKey = computed(() => {
+  const hour = new Date().getHours();
+  if (hour < 12) {
+    return 'home.greetingMorning';
+  }
+  if (hour < 18) {
+    return 'home.greetingAfternoon';
+  }
+  return 'home.greetingEvening';
+});
+const todayDateLabel = computed(() =>
+  new Intl.DateTimeFormat(locale.value || undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  }).format(new Date()),
+);
+const withAlpha = (hexColor: string | null, alphaHex: string): string | undefined => {
+  if (!hexColor) {
+    return undefined;
+  }
+  const normalized = hexColor.trim();
+  if (!/^#([0-9A-Fa-f]{6})$/.test(normalized)) {
+    return undefined;
+  }
+  return `${normalized}${alphaHex}`;
+};
 
 /** Home digest is empty when none of the three buckets have items. */
 const digestEmpty = computed(
   () => !overdue.value.length && !today.value.length && !week.value.length,
 );
 
-function isInHomeDigest(task: Task): boolean {
+const isInHomeDigest = (task: Task): boolean => {
   if (task.parentTaskId || task.done || !task.dueDate) {
     return false;
   }
@@ -70,7 +131,7 @@ function isInHomeDigest(task: Task): boolean {
     return true;
   }
   return isDueSoon(task.dueDate, 7);
-}
+};
 
 /** Open root tasks with a due date outside overdue / today / next-7-days (same rules as the three Home sections). */
 const tasksDueAfterDigestWindow = computed(() => {
@@ -123,8 +184,14 @@ const emptyCardCopy = computed(() => {
   return { titleKey: 'home.emptyTitle', bodyKey: 'home.emptySubtitleClear', params: {} };
 });
 
-// -------------------------------------------------- Lifecycle --------------------------------------------------
+const reloadHomeData = async (): Promise<void> => {
+  await listsStore.fetchLists();
+  await tasksStore.fetchTasks();
+};
 
+useRefetchWhenReachable(reloadHomeData);
+
+// -------------------------------------------------- Lifecycle --------------------------------------------------
 onMounted(async () => {
   await listsStore.fetchLists();
   await tasksStore.fetchTasks();
@@ -133,161 +200,192 @@ onMounted(async () => {
 });
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-function listName(listId: string): string {
+const listName = (listId: string): string => {
   return listsStore.listById(listId)?.title ?? listId;
-}
+};
 
-function goToList(list: List): void {
+const goToList = (list: List): void => {
   void router.push({ name: 'list', params: { id: list.id } });
-}
+};
 
-function goToFirstList(): void {
+const goToFirstList = (): void => {
   const first = orderedLists.value[0];
   if (first) {
     goToList(first);
   }
-}
+};
 
-async function toggle(task: Task): Promise<void> {
+const canEditList = (listId: string): boolean => {
+  const list = listsStore.listById(listId);
+  if (!list) {
+    return false;
+  }
+  if (!list.isShared) {
+    return true;
+  }
+  return list.sharedPermission === 'WRITE' || list.sharedPermission === 'ADMIN';
+};
+
+const canEditActiveTask = computed(() => {
+  if (!activeTask.value) {
+    return true;
+  }
+  return canEditList(activeTask.value.listId);
+});
+
+const subCount = (task: Task): number => {
+  return tasksStore.subTasksOf(task.id).length;
+};
+
+const toggle = async (task: Task): Promise<void> => {
   await tasksStore.toggleDone(task.id);
-}
+};
 
-async function openTask(task: Task): Promise<void> {
+const openTask = async (task: Task): Promise<void> => {
   activeTask.value = await tasksStore.fetchTask(task.id);
   bTaskOpen.value = true;
-}
+};
 
-async function onOpenTaskFromDetail(task: Task): Promise<void> {
+const onOpenTaskFromDetail = async (task: Task): Promise<void> => {
   activeTask.value = await tasksStore.fetchTask(task.id);
-}
+};
 
-function requestDeleteTask(task: Task): void {
+const requestDeleteTask = (task: Task): void => {
   taskPendingDelete.value = task;
   bDeleteConfirm.value = true;
-}
+};
 
-async function confirmDeleteTask(): Promise<void> {
+const confirmDeleteTask = async (): Promise<void> => {
   if (!taskPendingDelete.value) {
     return;
   }
   await tasksStore.deleteTask(taskPendingDelete.value.id);
   bDeleteConfirm.value = false;
   taskPendingDelete.value = null;
-}
+};
 
-async function afterTaskModalClose(): Promise<void> {
+const afterTaskModalClose = async (): Promise<void> => {
   await tasksStore.fetchTasks();
-}
+};
 </script>
 
 <template>
   <PageShell>
-    <PageHeader :title="t('nav.home')" />
-    <section v-if="orderedLists.length" class="grid-view mb-10">
+    <section class="mb-8 space-y-2">
+      <p class="text-xs font-semibold uppercase tracking-wide text-text-muted">
+        {{ t('home.workspaceOverview') }}
+      </p>
+      <h1 class="text-3xl font-bold tracking-tight text-text-primary md:text-4xl">
+        {{ t(greetingKey, { name: greetingName }) }}
+      </h1>
+    </section>
+    <section class="mb-8 rounded-3xl border border-border bg-card/30 p-5 md:p-6">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-2xl font-semibold tracking-tight text-text-primary">
+          {{ t('home.todaySchedule') }}
+        </h2>
+        <span class="rounded-full bg-fg/[0.06] px-3 py-1 text-xs font-semibold text-text-muted">
+          {{ todayDateLabel }}
+        </span>
+      </div>
+      <div v-if="hasScheduleTasks" class="list-view">
+        <div class="list-view-items">
+          <div v-for="task in scheduleTasks" :key="task.id" class="space-y-1">
+            <div class="px-1 text-[11px] font-medium text-text-muted">
+              {{ t('home.listBadge', { name: listName(task.listId) }) }}
+            </div>
+            <TaskRow
+              :task="task"
+              :subtask-count="subCount(task)"
+              :show-drag-handle="false"
+              :can-edit="canEditList(task.listId)"
+              @toggle-done="toggle"
+              @open="openTask"
+              @delete="requestDeleteTask"
+            />
+          </div>
+        </div>
+      </div>
+      <div
+        v-else
+        class="mt-2 rounded-2xl border border-primary/25 bg-card px-6 py-10 text-center shadow-sm"
+      >
+        <h3 class="mb-2 text-xl font-semibold tracking-tight text-text-primary">
+          {{ t(emptyCardCopy.titleKey) }}
+        </h3>
+        <p class="mb-6 text-sm leading-relaxed text-text-muted">
+          {{ t(emptyCardCopy.bodyKey, emptyCardCopy.params) }}
+        </p>
+        <div
+          v-if="orderedLists.length"
+          class="flex flex-col items-stretch justify-center gap-2 sm:flex-row"
+        >
+          <button type="button" class="button is-primary min-h-10 px-5" @click="goToFirstList">
+            {{ t('home.emptyCtaPrimary') }}
+          </button>
+          <RouterLink
+            :to="{ name: 'all-tasks' }"
+            class="button is-transparent min-h-10 justify-center border-border/80"
+          >
+            {{ t('home.emptyCtaSecondary') }}
+          </RouterLink>
+        </div>
+        <p v-else class="text-sm font-medium leading-relaxed text-primary">
+          {{ t('home.emptyNoListsHint') }}
+        </p>
+      </div>
+    </section>
+    <section v-if="listOverviewCards.length" class="mb-8">
       <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
         {{ t('home.yourLists') }}
       </h2>
-      <div ref="listsGridRef" class="grid-view-items">
-        <ListCard v-for="list in orderedLists" :key="list.id" :list="list" @click="goToList" />
-      </div>
-    </section>
-    <section
-      v-if="digestEmpty"
-      class="mx-auto mt-1 max-w-lg rounded-2xl border border-primary/25 bg-gradient-to-b from-primary/[0.12] via-card/40 to-card/20 px-6 py-10 text-center shadow-sm"
-    >
-      <div
-        class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/20 text-primary ring-2 ring-primary/30"
-        aria-hidden="true"
-      >
-        <Sparkles class="h-8 w-8" :stroke-width="1.75" />
-      </div>
-      <p class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-primary/90">
-        {{ t('home.emptyScopeLabel') }}
-      </p>
-      <p class="mb-5 text-xs leading-snug text-text-muted">
-        {{ t('home.emptyScopeDetail') }}
-      </p>
-      <h2 class="mb-2 text-xl font-semibold tracking-tight text-text-primary">
-        {{ t(emptyCardCopy.titleKey) }}
-      </h2>
-      <p class="mb-6 text-sm leading-relaxed text-text-muted">
-        {{ t(emptyCardCopy.bodyKey, emptyCardCopy.params) }}
-      </p>
-      <div v-if="orderedLists.length" class="flex flex-col items-stretch gap-2 sm:flex-row sm:justify-center">
-        <button type="button" class="button is-primary min-h-10 px-5" @click="goToFirstList">
-          {{ t('home.emptyCtaPrimary') }}
-        </button>
-        <RouterLink
-          :to="{ name: 'all-tasks' }"
-          class="button is-transparent min-h-10 justify-center border-border/80"
+      <div ref="listsGridRef" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <button
+          v-for="card in listOverviewCards"
+          :key="card.list.id"
+          type="button"
+          class="rounded-2xl border border-border bg-card/50 p-5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+          @click="goToList(card.list)"
         >
-          {{ t('home.emptyCtaSecondary') }}
-        </RouterLink>
+          <div class="mb-5 flex items-start justify-between gap-3">
+            <div
+              class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/12 text-primary"
+              :style="{
+                backgroundColor: withAlpha(card.list.color, '22'),
+                color: card.list.color || undefined,
+              }"
+            >
+              <span class="material-icons text-xl leading-none">
+                {{ card.list.icon || 'folder' }}
+              </span>
+            </div>
+            <span class="rounded-md bg-fg/[0.06] px-2 py-0.5 text-[10px] font-semibold text-text-muted">
+              {{ card.statusLabel }}
+            </span>
+          </div>
+          <h3 class="text-xl font-semibold text-text-primary">{{ card.list.title }}</h3>
+          <p class="mt-1 text-sm text-text-muted">
+            {{ card.description }}
+          </p>
+          <div class="mt-5 space-y-2">
+            <div class="flex items-center justify-between text-xs font-semibold text-text-muted">
+              <span>{{ t('task.itemsRemaining', { n: card.openCount }) }}</span>
+              <span>{{ card.completionPct }}%</span>
+            </div>
+            <div class="h-1.5 rounded-full bg-border/70">
+              <div
+                class="h-full rounded-full bg-primary transition-all"
+                :style="{ width: `${card.completionPct}%` }"
+              />
+            </div>
+          </div>
+        </button>
       </div>
-      <p v-else class="text-sm font-medium leading-relaxed text-primary">
-        {{ t('home.emptyNoListsHint') }}
-      </p>
     </section>
-    <div v-else class="space-y-8">
-      <section v-if="overdue.length">
-        <h2 class="mb-3 text-sm font-semibold uppercase text-destructive">{{ t('home.overdue') }}</h2>
-        <div class="list-view">
-          <div class="list-view-items">
-            <div v-for="task in overdue" :key="task.id" class="px-2">
-              <div class="mb-1 text-[10px] text-text-muted">
-                {{ t('home.listBadge', { name: listName(task.listId) }) }}
-              </div>
-              <TaskRow
-                :task="task"
-                @toggle-done="toggle"
-                @open="openTask"
-                @delete="requestDeleteTask"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-      <section v-if="today.length">
-        <h2 class="mb-3 text-sm font-semibold uppercase text-warning">{{ t('home.dueToday') }}</h2>
-        <div class="list-view">
-          <div class="list-view-items">
-            <div v-for="task in today" :key="task.id" class="px-2">
-              <div class="mb-1 text-[10px] text-text-muted">
-                {{ t('home.listBadge', { name: listName(task.listId) }) }}
-              </div>
-              <TaskRow
-                :task="task"
-                @toggle-done="toggle"
-                @open="openTask"
-                @delete="requestDeleteTask"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-      <section v-if="week.length">
-        <h2 class="mb-3 text-sm font-semibold uppercase text-text-muted">{{ t('home.dueWeek') }}</h2>
-        <div class="list-view">
-          <div class="list-view-items">
-            <div v-for="task in week" :key="task.id" class="px-2">
-              <div class="mb-1 text-[10px] text-text-muted">
-                {{ t('home.listBadge', { name: listName(task.listId) }) }}
-              </div>
-              <TaskRow
-                :task="task"
-                @toggle-done="toggle"
-                @open="openTask"
-                @delete="requestDeleteTask"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
     <TaskDetailModal
       :is-open="bTaskOpen"
       :task="activeTask"
+      :can-edit="canEditActiveTask"
       @close="bTaskOpen = false"
       @saved="
         bTaskOpen = false;

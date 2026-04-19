@@ -1,6 +1,7 @@
 // node_modules
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { homedir } from 'node:os';
 
 // -------------------------------------------------- Config --------------------------------------------------
 
@@ -40,4 +41,5 @@ export const config = {
   nodeEnv: process.env['NODE_ENV'] ?? 'development',
   isProduction: process.env['NODE_ENV'] === 'production',
   dashboardDistPath: resolveDashboardDistPath(),
+  configDir: process.env['CONFIG_DIR']?.trim() || join(homedir(), '.nova-task'),
 };

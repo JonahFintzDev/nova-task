@@ -3,6 +3,7 @@
 import { nextTick, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import { Lock, LogIn, User, UserPlus } from 'lucide-vue-next';
 
 // classes
 import { healthApi } from '@/classes/api';
@@ -14,14 +15,12 @@ import { fadeInElement } from '@/lib/gsap';
 import { useAuthStore } from '@/stores/auth';
 
 // -------------------------------------------------- Store --------------------------------------------------
-
 const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 const { t } = useI18n();
 
 // -------------------------------------------------- Data --------------------------------------------------
-
 const username = ref('');
 const password = ref('');
 const bRegisterMode = ref(false);
@@ -31,7 +30,6 @@ const bRegistrationEnabled = ref(true);
 const cardRef = ref<HTMLElement | null>(null);
 
 // -------------------------------------------------- Watchers --------------------------------------------------
-
 watch(bRegistrationEnabled, (enabled) => {
   if (!enabled) {
     bRegisterMode.value = false;
@@ -39,7 +37,6 @@ watch(bRegistrationEnabled, (enabled) => {
 });
 
 // -------------------------------------------------- Lifecycle --------------------------------------------------
-
 onMounted(async () => {
   const health = await healthApi.check();
   bRegistrationEnabled.value = health.registrationEnabled;
@@ -51,8 +48,7 @@ onMounted(async () => {
 });
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-async function submit(): Promise<void> {
+const submit = async (): Promise<void> => {
   errorMessage.value = '';
   bLoading.value = true;
   try {
@@ -72,17 +68,37 @@ async function submit(): Promise<void> {
   } finally {
     bLoading.value = false;
   }
-}
+};
 </script>
 
 <template>
-  <div class="flex min-h-dvh items-center justify-center bg-bg px-4">
-    <div ref="cardRef" class="w-full max-w-sm rounded-xl border border-border bg-surface p-8 shadow-xl">
-      <h1 class="mb-6 text-center text-xl font-semibold">{{ t('auth.login') }}</h1>
-      <div
-        v-if="bRegistrationEnabled"
-        class="mb-4 flex justify-center"
-      >
+  <div class="relative flex min-h-dvh items-center justify-center overflow-hidden bg-bg px-4">
+    <!-- Gradient orb — top-right -->
+    <div
+      class="pointer-events-none absolute -right-40 -top-40 h-[500px] w-[500px] rounded-full opacity-25"
+      style="background: radial-gradient(circle, #4f46e5 0%, transparent 65%); filter: blur(48px);"
+    />
+    <!-- Gradient orb — bottom-left -->
+    <div
+      class="pointer-events-none absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full opacity-20"
+      style="background: radial-gradient(circle, #7c3aed 0%, transparent 65%); filter: blur(60px);"
+    />
+
+    <div
+      ref="cardRef"
+      class="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-surface p-8 shadow-2xl"
+    >
+      <!-- Logo + brand -->
+      <div class="mb-7 flex flex-col items-center gap-3">
+        <img src="/icon.svg" alt="Nova Task logo" class="h-14 w-14 drop-shadow-sm" />
+        <div class="text-center">
+          <h1 class="text-2xl font-bold tracking-tight text-text-primary">Nova Task</h1>
+          <p class="mt-0.5 text-sm text-text-muted">Your personal task manager</p>
+        </div>
+      </div>
+
+      <!-- Login / Register tab switcher -->
+      <div v-if="bRegistrationEnabled" class="mb-5 flex justify-center">
         <div
           class="inline-flex flex-wrap items-stretch gap-0.5 rounded-md border border-border p-0.5"
         >
@@ -104,17 +120,38 @@ async function submit(): Promise<void> {
           </button>
         </div>
       </div>
+
       <form class="space-y-4" @submit.prevent="submit">
         <div class="field">
           <label class="label">{{ t('auth.username') }}</label>
-          <input v-model="username" type="text" autocomplete="username" required />
+          <div class="input-wrap">
+            <span class="icon"><User :size="15" /></span>
+            <input
+              v-model="username"
+              type="text"
+              autocomplete="username"
+              required
+              :placeholder="t('auth.username')"
+            />
+          </div>
         </div>
         <div class="field">
           <label class="label">{{ t('auth.password') }}</label>
-          <input v-model="password" type="password" autocomplete="current-password" required />
+          <div class="input-wrap">
+            <span class="icon"><Lock :size="15" /></span>
+            <input
+              v-model="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              :placeholder="t('auth.password')"
+            />
+          </div>
         </div>
         <p v-if="errorMessage" class="message is-error">{{ errorMessage }}</p>
         <button type="submit" class="button is-primary w-full" :disabled="bLoading">
+          <LogIn v-if="!bRegisterMode" :size="16" />
+          <UserPlus v-else :size="16" />
           {{ bRegisterMode ? t('auth.submitRegister') : t('auth.submitLogin') }}
         </button>
       </form>

@@ -7,6 +7,7 @@ import { router } from '@/classes/router';
 
 // lib
 import { i18n } from '@/lib/i18n';
+import { startPwaOfflineTaskListeners } from '@/lib/pwa-offline-tasks';
 
 // components
 import App from '@/App.vue';
@@ -24,6 +25,7 @@ app.use(createPinia());
 app.use(router);
 app.use(i18n);
 app.mount('#app');
+startPwaOfflineTaskListeners();
 
 // Register service worker for PWA support
 if ('serviceWorker' in navigator) {

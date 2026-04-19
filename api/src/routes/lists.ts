@@ -27,6 +27,7 @@ export async function listsRoutes(fastify: FastifyInstance): Promise<void> {
           icon: Type.Optional(Type.Union([Type.String(), Type.Null()])),
           color: Type.Optional(Type.Union([Type.String(), Type.Null()])),
           category: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+          commentsEnabled: Type.Optional(Type.Boolean()),
         }),
       },
     },
@@ -37,12 +38,21 @@ export async function listsRoutes(fastify: FastifyInstance): Promise<void> {
         icon?: string | null;
         color?: string | null;
         category?: string | null;
+        commentsEnabled?: boolean;
       };
+      if (body.commentsEnabled !== undefined) {
+        const appSettings = await db.getAppSettings();
+        if (!appSettings.commentsEnabled) {
+          await reply.code(400).send({ error: 'Comments are globally disabled' });
+          return;
+        }
+      }
       const list = await db.createList(userId, {
         title: body.title,
         icon: body.icon ?? undefined,
         color: body.color ?? undefined,
         category: body.category ?? undefined,
+        commentsEnabled: body.commentsEnabled,
       });
       await reply.code(201).send(list);
     },
@@ -59,6 +69,7 @@ export async function listsRoutes(fastify: FastifyInstance): Promise<void> {
           icon: Type.Optional(Type.Union([Type.String(), Type.Null()])),
           color: Type.Optional(Type.Union([Type.String(), Type.Null()])),
           category: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+          commentsEnabled: Type.Optional(Type.Boolean()),
         }),
       },
     },
@@ -66,6 +77,13 @@ export async function listsRoutes(fastify: FastifyInstance): Promise<void> {
       const userId = request.jwtUser!.userId;
       const { id } = request.params as { id: string };
       const body = request.body as Record<string, unknown>;
+      if (body['commentsEnabled'] !== undefined) {
+        const appSettings = await db.getAppSettings();
+        if (!appSettings.commentsEnabled) {
+          await reply.code(400).send({ error: 'Comments are globally disabled' });
+          return;
+        }
+      }
       const updated = await db.updateList(id, userId, body);
       if (!updated) {
         await reply.code(404).send({ error: 'List not found' });

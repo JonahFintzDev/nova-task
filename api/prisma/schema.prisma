@@ -15,6 +15,12 @@ enum Priority {
   URGENT
 }
 
+enum ListSharePermission {
+  READ
+  WRITE
+  ADMIN
+}
+
 model User {
   id           String   @id @default(cuid())
   username     String   @unique
@@ -27,9 +33,17 @@ model User {
   darkTheme  String?
   lightTheme String?
 
-  lists List[]
-  tasks Task[]
-  tags  Tag[]
+  lists             List[]
+  tasks             Task[]
+  tags              Tag[]
+  pushSubscriptions PushSubscription[]
+  recurringRules    RecurringRule[]
+  sharedLists       ListShare[]
+  comments          Comment[]
+  activities        ActivityLog[]
+  assignedTasks     Task[]             @relation("TaskAssignee")
+  calendarFeeds     CalendarFeedToken[]
+  apiKeys           ApiKey[]
 }
 
 model List {
@@ -40,11 +54,14 @@ model List {
   icon      String?
   color     String?
   category  String?
+  commentsEnabled Boolean @default(true)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tasks Task[]
+  tasks  Task[]
+  shares ListShare[]
+  calendarFeedMappings CalendarFeedList[]
 }
 
 model Task {
@@ -68,13 +85,21 @@ model Task {
   parentTask   Task?   @relation("SubTasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
   subTasks     Task[]  @relation("SubTasks")
 
-  tags TaskTag[]
+  tags           TaskTag[]
+  recurringRule  RecurringRule?
+  reminderSentAt DateTime?
+  reminderOffset Int?
+
+  assignedToUserId String?
+  assignedTo       User?         @relation("TaskAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  comments         Comment[]
+  activities       ActivityLog[]
 }
 
 model Tag {
-  id     String @id @default(cuid())
+  id     String  @id @default(cuid())
   userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   name   String
   color  String?
 
@@ -95,4 +120,102 @@ model TaskTag {
 model AppSettings {
   key   String @id
   value String
+}
+
+model PushSubscription {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}
+
+model RecurringRule {
+  id        String   @id @default(cuid())
+  taskId    String   @unique
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  frequency String
+  interval  Int      @default(1)
+  streak    Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model ListShare {
+  id          String              @id @default(cuid())
+  listId      String
+  list        List                @relation(fields: [listId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission  ListSharePermission @default(READ)
+  invitedById String
+  createdAt   DateTime            @default(now())
+
+  @@unique([listId, userId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  listId    String?
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+}
+
+model CalendarFeedToken {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String?
+  tokenHash   String   @unique
+  includeDone Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lists       CalendarFeedList[]
+
+  @@index([userId, isActive])
+}
+
+model CalendarFeedList {
+  feedId String
+  feed   CalendarFeedToken @relation(fields: [feedId], references: [id], onDelete: Cascade)
+  listId String
+  list   List              @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@id([feedId, listId])
+  @@index([listId])
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  keyHash    String    @unique
+  keyPrefix  String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  @@index([userId])
 }

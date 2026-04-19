@@ -8,7 +8,6 @@ import { tagPillStyles } from '@/lib/tagColors';
 import type { Tag } from '@/@types/index';
 
 // -------------------------------------------------- Props --------------------------------------------------
-
 const props = defineProps<{
   tag: Tag;
 }>();

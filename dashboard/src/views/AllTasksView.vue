@@ -12,6 +12,7 @@ import TaskCard from '@/components/task/TaskCard.vue';
 import TaskDetailModal from '@/components/task/TaskDetailModal.vue';
 
 import { useDataTheme } from '@/composables/useDataTheme';
+import { useRefetchWhenReachable } from '@/composables/useRefetchWhenReachable';
 import { tagPillStyles } from '@/lib/tagColors';
 
 // stores
@@ -23,14 +24,12 @@ import { useTasksStore } from '@/stores/tasks';
 import type { Priority, Tag, Task } from '@/@types/index';
 
 // -------------------------------------------------- Store --------------------------------------------------
-
 const tasksStore = useTasksStore();
 const listsStore = useListsStore();
 const tagsStore = useTagsStore();
 const { t } = useI18n();
 
 // -------------------------------------------------- Data --------------------------------------------------
-
 const PRIORITY_LEGEND: readonly Priority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 const filterTagIds = ref<string[]>([]);
 const themeMode = useDataTheme();
@@ -40,7 +39,6 @@ const bDeleteConfirm = ref(false);
 const taskPendingDelete = ref<Task | null>(null);
 
 // -------------------------------------------------- Computed --------------------------------------------------
-
 const grouped = computed(() => {
   const map = new Map<string, Task[]>();
   for (const task of tasksStore.tasks) {
@@ -61,8 +59,19 @@ const grouped = computed(() => {
   return map;
 });
 
-// -------------------------------------------------- Lifecycle --------------------------------------------------
+const reloadAllTasksData = async (): Promise<void> => {
+  await listsStore.fetchLists();
+  await tasksStore.fetchTasks();
+  try {
+    await tagsStore.fetchTags();
+  } catch {
+    /* offline */
+  }
+};
 
+useRefetchWhenReachable(reloadAllTasksData);
+
+// -------------------------------------------------- Lifecycle --------------------------------------------------
 onMounted(async () => {
   await listsStore.fetchLists();
   await tasksStore.fetchTasks();
@@ -70,61 +79,60 @@ onMounted(async () => {
 });
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-function listTitle(id: string): string {
+const listTitle = (id: string): string => {
   return listsStore.listById(id)?.title ?? id;
-}
+};
 
-function filterTagStyle(tag: Tag): Record<string, string> {
+const filterTagStyle = (tag: Tag): Record<string, string> => {
   const base = tagPillStyles(tag, themeMode.value);
   if (filterTagIds.value.includes(tag.id)) {
     return { ...base, boxShadow: '0 0 0 2px var(--color-primary)' };
   }
   return base;
-}
+};
 
-function toggleTagFilter(tagId: string): void {
+const toggleTagFilter = (tagId: string): void => {
   if (filterTagIds.value.includes(tagId)) {
     filterTagIds.value = filterTagIds.value.filter((id) => id !== tagId);
   } else {
     filterTagIds.value = [...filterTagIds.value, tagId];
   }
-}
+};
 
-async function toggle(task: Task): Promise<void> {
+const toggle = async (task: Task): Promise<void> => {
   await tasksStore.toggleDone(task.id);
-}
+};
 
-function subCount(task: Task): number {
+const subCount = (task: Task): number => {
   return tasksStore.subTasksOf(task.id).length;
-}
+};
 
-async function openTask(task: Task): Promise<void> {
+const openTask = async (task: Task): Promise<void> => {
   activeTask.value = await tasksStore.fetchTask(task.id);
   bTaskOpen.value = true;
-}
+};
 
-async function onOpenTaskFromDetail(task: Task): Promise<void> {
+const onOpenTaskFromDetail = async (task: Task): Promise<void> => {
   activeTask.value = await tasksStore.fetchTask(task.id);
-}
+};
 
-function requestDeleteTask(task: Task): void {
+const requestDeleteTask = (task: Task): void => {
   taskPendingDelete.value = task;
   bDeleteConfirm.value = true;
-}
+};
 
-async function confirmDeleteTask(): Promise<void> {
+const confirmDeleteTask = async (): Promise<void> => {
   if (!taskPendingDelete.value) {
     return;
   }
   await tasksStore.deleteTask(taskPendingDelete.value.id);
   bDeleteConfirm.value = false;
   taskPendingDelete.value = null;
-}
+};
 
-async function afterTaskModalClose(): Promise<void> {
+const afterTaskModalClose = async (): Promise<void> => {
   await tasksStore.fetchTasks();
-}
+};
 </script>
 
 <template>

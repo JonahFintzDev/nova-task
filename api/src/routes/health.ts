@@ -13,6 +13,7 @@ export async function healthRoutes(fastify: FastifyInstance): Promise<void> {
       ok: true,
       needsSetup: userCount === 0,
       registrationEnabled: appSettings.registrationEnabled,
+      commentsEnabled: appSettings.commentsEnabled,
     };
   });
 }

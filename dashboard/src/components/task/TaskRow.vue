@@ -15,15 +15,14 @@ import TagChip from '@/components/task/TagChip.vue';
 import type { Task } from '@/@types/index';
 
 // -------------------------------------------------- Props --------------------------------------------------
-
 const props = defineProps<{
   task: Task;
   subtaskCount?: number;
   showDragHandle?: boolean;
+  canEdit?: boolean;
 }>();
 
 // -------------------------------------------------- Emits --------------------------------------------------
-
 const emit = defineEmits<{
   (event: 'toggleDone', task: Task): void;
   (event: 'open', task: Task): void;
@@ -31,13 +30,11 @@ const emit = defineEmits<{
 }>();
 
 // -------------------------------------------------- Data --------------------------------------------------
-
 const { t } = useI18n();
 const bMenuOpen = ref(false);
 const menuRoot = ref<HTMLElement | null>(null);
 
 // -------------------------------------------------- Computed --------------------------------------------------
-
 const priorityText = computed(() => {
   if (!props.task.priority || props.task.priority === 'NONE') {
     return '';
@@ -55,38 +52,37 @@ const subtitleText = computed(() => {
   }
   return parts.join(' • ');
 });
+const editable = computed(() => props.canEdit !== false);
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-function onRowClick(event: MouseEvent): void {
+const onRowClick = (event: MouseEvent): void => {
   const target = event.target as HTMLElement;
   if (target.closest('button')) {
     return;
   }
   emit('open', props.task);
-}
+};
 
-function onDocumentClick(event: MouseEvent): void {
+const onDocumentClick = (event: MouseEvent): void => {
   if (!bMenuOpen.value || !menuRoot.value) {
     return;
   }
   if (!menuRoot.value.contains(event.target as Node)) {
     bMenuOpen.value = false;
   }
-}
+};
 
-function onEdit(): void {
+const onEdit = (): void => {
   bMenuOpen.value = false;
   emit('open', props.task);
-}
+};
 
-function onDelete(): void {
+const onDelete = (): void => {
   bMenuOpen.value = false;
   emit('delete', props.task);
-}
+};
 
 // -------------------------------------------------- Lifecycle --------------------------------------------------
-
 onMounted(() => {
   document.addEventListener('click', onDocumentClick);
 });
@@ -98,13 +94,13 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="task-row flex w-full min-w-0 cursor-pointer flex-row items-center gap-3 px-4 py-3 transition-opacity"
-    :class="props.task.done ? 'opacity-60' : ''"
+    class="task-row flex w-full min-w-0 flex-row items-center gap-3 px-4 py-3 transition-opacity"
+    :class="[editable ? 'cursor-pointer' : 'cursor-default', props.task.done ? 'opacity-60' : '']"
     @click="onRowClick"
   >
     <!-- Drag handle (inside card) -->
     <span
-      v-if="showDragHandle && !props.task.done"
+      v-if="editable && showDragHandle && !props.task.done"
       class="drag-handle flex shrink-0 cursor-grab select-none items-center justify-center text-text-muted/40 hover:text-text-muted"
     >
       <GripVertical class="h-4 w-4" />
@@ -112,6 +108,7 @@ onUnmounted(() => {
 
     <!-- Checkbox -->
     <button
+      v-if="editable"
       type="button"
       class="button is-icon is-transparent shrink-0 text-text-muted hover:text-primary"
       :title="props.task.done ? t('task.undone') : t('task.done')"
@@ -120,6 +117,10 @@ onUnmounted(() => {
       <CheckCircle2 v-if="props.task.done" class="h-5 w-5 text-primary" />
       <Circle v-else class="h-5 w-5" />
     </button>
+    <span v-else class="shrink-0">
+      <CheckCircle2 v-if="props.task.done" class="h-5 w-5 text-primary" />
+      <Circle v-else class="h-5 w-5 text-text-muted/50" />
+    </span>
 
     <!-- Content -->
     <div class="min-w-0 flex-1 space-y-0.5">
@@ -155,7 +156,7 @@ onUnmounted(() => {
 
     <!-- Right: URGENT badge + actions -->
     <div
-      v-if="!props.task.done"
+      v-if="editable && !props.task.done"
       ref="menuRoot"
       class="relative flex shrink-0 items-center gap-1.5"
     >
@@ -169,7 +170,7 @@ onUnmounted(() => {
 
       <!-- Drag dots (when no explicit drag handle prop) -->
       <span
-        v-if="!showDragHandle"
+        v-if="!showDragHandle && showDragHandle !== false"
         class="drag-handle flex shrink-0 cursor-grab select-none items-center justify-center text-text-muted/30 hover:text-text-muted"
       >
         <GripVertical class="h-4 w-4" />

@@ -1,10 +1,13 @@
 // node_modules
 import dayjs from 'dayjs';
+import localizedFormat from 'dayjs/plugin/localizedFormat';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 // types
 import type { Priority } from '@/@types/index';
+
+dayjs.extend(localizedFormat);
 
 export function formatDueDate(
   iso: string | null | undefined,
@@ -73,4 +76,15 @@ export function priorityBadgeClass(priority: Priority): string {
 
 export function cn(...parts: Array<string | false | null | undefined>): string {
   return twMerge(clsx(parts));
+}
+
+/** Vue Router params may be `string | string[]` — normalize for API calls and comparisons. */
+export function routeParamToString(value: unknown): string {
+  if (Array.isArray(value)) {
+    return typeof value[0] === 'string' ? value[0] : '';
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  return '';
 }

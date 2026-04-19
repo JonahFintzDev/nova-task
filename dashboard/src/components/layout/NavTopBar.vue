@@ -15,50 +15,43 @@ import { usePWAInstall } from '@/composables/usePWAInstall';
 import { useAuthStore } from '@/stores/auth';
 
 // -------------------------------------------------- Props --------------------------------------------------
-
 defineProps<{
   title: string;
 }>();
 
 // -------------------------------------------------- Emits --------------------------------------------------
-
 const emit = defineEmits<{
   (event: 'search'): void;
   (event: 'menu'): void;
 }>();
 
 // -------------------------------------------------- Store --------------------------------------------------
-
 const authStore = useAuthStore();
 const { t } = useI18n();
 
 // -------------------------------------------------- PWA Install --------------------------------------------------
-
 const { isInstallable, installPWA } = usePWAInstall();
 
 // -------------------------------------------------- Data --------------------------------------------------
-
 const bMenu = ref(false);
 const menuRoot = ref<HTMLElement | null>(null);
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-function logout(): void {
+const logout = (): void => {
   authStore.logout();
   window.location.href = '/login';
-}
+};
 
-function onDocumentClick(event: MouseEvent): void {
+const onDocumentClick = (event: MouseEvent): void => {
   if (!bMenu.value || !menuRoot.value) {
     return;
   }
   if (!menuRoot.value.contains(event.target as Node)) {
     bMenu.value = false;
   }
-}
+};
 
 // -------------------------------------------------- Lifecycle --------------------------------------------------
-
 onMounted(() => {
   document.addEventListener('click', onDocumentClick);
 });
@@ -70,7 +63,7 @@ onUnmounted(() => {
 
 <template>
   <header
-    class="flex h-14 shrink-0 items-center justify-between gap-4 border-b px-4"
+    class="relative z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b px-4"
     :class="'border-border bg-surface/90 backdrop-blur-md'"
   >
     <div class="flex min-w-0 items-center gap-3">

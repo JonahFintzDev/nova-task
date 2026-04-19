@@ -31,24 +31,20 @@ const defaultIconCandidates: string[] = [
 const iconSet = new Set(googleIcons);
 const defaultIcons = defaultIconCandidates.filter((icon) => iconSet.has(icon));
 // -------------------------------------------------- Props --------------------------------------------------
-
 defineProps<{
   modelValue: string | null;
 }>();
 
 // -------------------------------------------------- Emits --------------------------------------------------
-
 const emit = defineEmits<{
   (event: 'update:modelValue', value: string | null): void;
 }>();
 
 // -------------------------------------------------- Data --------------------------------------------------
-
 const { t } = useI18n();
 const filter = ref('');
 
 // -------------------------------------------------- Computed --------------------------------------------------
-
 const filtered = computed(() => {
   const term = filter.value.trim().toLowerCase();
   if (!term) {
@@ -58,14 +54,13 @@ const filtered = computed(() => {
 });
 
 // -------------------------------------------------- Methods --------------------------------------------------
-
-function pick(icon: string): void {
+const pick = (icon: string): void => {
   emit('update:modelValue', icon);
-}
+};
 
-function clear(): void {
+const clear = (): void => {
   emit('update:modelValue', null);
-}
+};
 </script>
 
 <template>
