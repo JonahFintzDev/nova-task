@@ -1,3 +1,4 @@
+name: nova-task
 services:
   nova-task:
     build: .
@@ -26,6 +27,7 @@ services:
 
 volumes:
   nova-task-postgres-data:
+    name: nova-task-postgres-data
 
 networks:
   nova-task:

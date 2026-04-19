@@ -59,6 +59,7 @@ services:
 
 volumes:
   nova-task-postgres-dev:
+    name: nova-task-postgres-dev
 
 networks:
   nova-task:
