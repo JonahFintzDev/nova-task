@@ -24,9 +24,21 @@ export function formatDueDate(
   return d.locale(locale).format('ll');
 }
 
-export function isOverdue(iso: string | null | undefined, done: boolean): boolean {
+/**
+ * @param hasTime When false (date-only due), overdue means the due **calendar day** is before
+ *   today in the local timezone. When true, the due instant is compared to "now" by minute
+ *   (timed deadlines).
+ */
+export function isOverdue(
+  iso: string | null | undefined,
+  done: boolean,
+  hasTime = true,
+): boolean {
   if (!iso || done) {
     return false;
+  }
+  if (!hasTime) {
+    return dayjs(iso).startOf('day').isBefore(dayjs().startOf('day'));
   }
   return dayjs(iso).isBefore(dayjs(), 'minute');
 }

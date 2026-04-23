@@ -87,11 +87,13 @@ export async function authRoutes(fastify: FastifyInstance): Promise<void> {
         await reply.send({ valid: false, username: null, userId: null, isAdmin: false });
         return;
       }
+      const avatarUrl = user.avatarExt ? `/api/users/${user.id}/avatar` : null;
       await reply.send({
         valid: true,
         username: user.username,
         userId: user.id,
         isAdmin: user.isAdmin,
+        avatarUrl,
       });
     } catch {
       await reply.send({ valid: false, username: null, userId: null, isAdmin: false });

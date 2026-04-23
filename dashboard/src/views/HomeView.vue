@@ -127,7 +127,7 @@ const isInHomeDigest = (task: Task): boolean => {
   if (task.parentTaskId || task.done || !task.dueDate) {
     return false;
   }
-  if (isOverdue(task.dueDate, false) || isDueToday(task.dueDate)) {
+  if (isOverdue(task.dueDate, false, task.dueDateHasTime) || isDueToday(task.dueDate)) {
     return true;
   }
   return isDueSoon(task.dueDate, 7);

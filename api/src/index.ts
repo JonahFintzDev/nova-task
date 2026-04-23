@@ -2,6 +2,7 @@
 import Fastify from "fastify";
 import fastifyAuth from "@fastify/auth";
 import fastifyCors from "@fastify/cors";
+import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
@@ -15,6 +16,7 @@ import { config } from "./classes/config";
 
 // routes
 import { adminRoutes } from "./routes/admin";
+import { avatarRoutes } from "./routes/avatar";
 import { aiRoutes } from "./routes/ai";
 import { authRoutes } from "./routes/auth";
 import { collaborationRoutes } from "./routes/collaboration";
@@ -110,10 +112,12 @@ async function main(): Promise<void> {
 
   await fastify.register(fastifyAuth);
   await fastify.register(fastifyWebsocket);
+  await fastify.register(fastifyMultipart, { limits: { fileSize: 6 * 1024 * 1024 } });
 
   registerAuth(fastify);
 
   await fastify.register(healthRoutes);
+  await fastify.register(avatarRoutes);
   await fastify.register(authRoutes);
   await fastify.register(listsRoutes);
   await fastify.register(tasksRoutes);

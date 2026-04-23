@@ -134,7 +134,6 @@ const focusSearchInput = async (): Promise<void> => {
               v-model="query"
               type="search"
               :placeholder="t('search.placeholder')"
-              class="ps-10!"
               autofocus
             />
           </div>

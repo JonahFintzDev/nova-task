@@ -83,7 +83,7 @@ export const useTasksStore = defineStore('tasks', () => {
 
   const overdueTasks = computed(() => {
     return tasks.value.filter(
-      (task) => !task.parentTaskId && isOverdue(task.dueDate, task.done),
+      (task) => !task.parentTaskId && isOverdue(task.dueDate, task.done, task.dueDateHasTime),
     );
   });
 
@@ -405,7 +405,7 @@ export const useTasksStore = defineStore('tasks', () => {
       if (task.parentTaskId || task.done || !task.dueDate) {
         return false;
       }
-      if (isOverdue(task.dueDate, false) || isDueToday(task.dueDate)) {
+      if (isOverdue(task.dueDate, false, task.dueDateHasTime) || isDueToday(task.dueDate)) {
         return false;
       }
       return isDueSoon(task.dueDate, 7);

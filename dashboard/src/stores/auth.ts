@@ -11,6 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
   const userId = ref<string | null>(null);
   const isAdmin = ref(false);
   const validated = ref(false);
+  const avatarUrl = ref<string | null>(null);
 
   async function login(user: string, password: string): Promise<void> {
     const response = await authApi.login(user, password);
@@ -34,6 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
     userId.value = null;
     isAdmin.value = false;
     validated.value = false;
+    avatarUrl.value = null;
     setStoredToken(null);
     appWs.disconnect();
   }
@@ -51,6 +53,7 @@ export const useAuthStore = defineStore('auth', () => {
     username.value = response.username;
     userId.value = response.userId ?? null;
     isAdmin.value = response.isAdmin;
+    avatarUrl.value = response.avatarUrl ?? null;
     validated.value = true;
     appWs.connect();
     return true;
@@ -66,6 +69,7 @@ export const useAuthStore = defineStore('auth', () => {
     userId,
     isAdmin,
     validated,
+    avatarUrl,
     login,
     register,
     logout,

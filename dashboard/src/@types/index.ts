@@ -9,6 +9,7 @@ export interface User {
   autoTheme: boolean;
   darkTheme: string | null;
   lightTheme: string | null;
+  avatarUrl?: string | null;
 }
 
 export interface List {

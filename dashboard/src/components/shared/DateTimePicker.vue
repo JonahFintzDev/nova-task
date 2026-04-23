@@ -98,6 +98,7 @@ watch(time, (newValue, oldValue) => {
   <div class="bg-input border border-border rounded-lg overflow-hidden">
     <VueDatePicker
       v-model="modelDate"
+      :teleport="true"
       :auto-apply="true"
       :time-config="{ enableTimePicker: false }"
       :clearable="true"
@@ -117,6 +118,7 @@ watch(time, (newValue, oldValue) => {
   >
     <VueDatePicker
       v-model="time"
+      :teleport="true"
       :formats="{
         input: 'HH:mm',
       }"

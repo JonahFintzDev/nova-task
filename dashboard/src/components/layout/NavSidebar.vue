@@ -115,7 +115,7 @@ defineExpose({ openDrawer });
         @click="closeMobileDrawer"
       >
         <span class="flex items-center gap-2 font-bold text-text-primary leading-tight">
-          <LayoutDashboard class="h-4 w-4 shrink-0 text-primary" />
+          <img src="/icon.svg" class="h-5 w-5 shrink-0" alt="" aria-hidden="true" />
           Nova Task
         </span>
         <span class="ps-6 text-[11px] text-text-muted leading-tight">Task Manager</span>

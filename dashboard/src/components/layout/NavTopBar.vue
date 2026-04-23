@@ -1,12 +1,15 @@
 <script setup lang="ts">
 // node_modules
-import { CircleUser, Download, LogOut, Menu, Search, Settings } from 'lucide-vue-next';
+import { Download, LogOut, Menu, Search, Settings } from 'lucide-vue-next';
 import { onMounted, onUnmounted, ref } from 'vue';
 
 // lib
 import { dropdownEnter, dropdownLeave } from '@/lib/gsap';
 import { useI18n } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
+
+// components
+import UserAvatar from '@/components/shared/UserAvatar.vue';
 
 // composables
 import { usePWAInstall } from '@/composables/usePWAInstall';
@@ -107,10 +110,14 @@ onUnmounted(() => {
       <div ref="menuRoot" class="relative">
         <button
           type="button"
-          class="flex items-center justify-center h-9 w-9 rounded-full border border-border bg-bg text-text-muted hover:bg-fg/[0.06] hover:text-text-primary transition-colors"
+          class="flex items-center justify-center h-9 w-9 rounded-full border border-border bg-bg overflow-hidden hover:opacity-90 transition-opacity"
           @click.stop="bMenu = !bMenu"
         >
-          <CircleUser class="h-5 w-5 shrink-0" />
+          <UserAvatar
+            :username="authStore.username ?? ''"
+            :avatar-url="authStore.avatarUrl"
+            size="md"
+          />
         </button>
         <Transition name="gsap-dropdown" :css="false" @enter="dropdownEnter" @leave="dropdownLeave">
           <div

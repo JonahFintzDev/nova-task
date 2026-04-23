@@ -5,7 +5,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 // classes
-import { apiKeysApi, calendarApi, listApi, settingsApi } from '@/classes/api';
+import { apiKeysApi, avatarApi, calendarApi, listApi, settingsApi } from '@/classes/api';
 import type { ApiKey, ApiKeyWithPlainKey, CalendarFeed, List } from '@/@types/index';
 
 // lib
@@ -29,9 +29,14 @@ import {
 import PageHeader from '@/components/layout/PageHeader.vue';
 import PageShell from '@/components/layout/PageShell.vue';
 import ButtonMultiselect from '@/components/shared/ButtonMultiselect.vue';
+import UserAvatar from '@/components/shared/UserAvatar.vue';
+
+// stores
+import { useAuthStore } from '@/stores/auth';
 
 // -------------------------------------------------- Data --------------------------------------------------
 const { t, locale } = useI18n();
+const authStore = useAuthStore();
 const tab = ref<'general' | 'security' | 'notifications' | 'calendar' | 'apiKeys'>('general');
 const appearance = ref<AppearanceChoice>('auto');
 const language = ref<LocaleCode>('en');
@@ -40,6 +45,12 @@ const newPassword = ref('');
 const confirmPassword = ref('');
 const bSaving = ref(false);
 const message = ref('');
+
+// Avatar
+const bAvatarSaving = ref(false);
+const avatarMessage = ref('');
+const avatarError = ref('');
+const avatarFileInput = ref<HTMLInputElement | null>(null);
 
 // Notifications
 const notificationsEnabled = ref(isNotificationsEnabled());
@@ -142,6 +153,39 @@ onMounted(async () => {
 });
 
 // -------------------------------------------------- Methods --------------------------------------------------
+const onAvatarFileChange = async (event: Event): Promise<void> => {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  avatarMessage.value = '';
+  avatarError.value = '';
+  bAvatarSaving.value = true;
+  try {
+    const result = await avatarApi.upload(file);
+    authStore.avatarUrl = result.avatarUrl + '?t=' + Date.now();
+    avatarMessage.value = t('settings.avatarSaved');
+  } catch {
+    avatarError.value = t('common.error');
+  } finally {
+    bAvatarSaving.value = false;
+    if (avatarFileInput.value) avatarFileInput.value.value = '';
+  }
+};
+
+const removeAvatar = async (): Promise<void> => {
+  avatarMessage.value = '';
+  avatarError.value = '';
+  bAvatarSaving.value = true;
+  try {
+    await avatarApi.remove();
+    authStore.avatarUrl = null;
+    avatarMessage.value = t('settings.avatarRemoved');
+  } catch {
+    avatarError.value = t('common.error');
+  } finally {
+    bAvatarSaving.value = false;
+  }
+};
+
 const persistAppearance = async (choice: AppearanceChoice): Promise<void> => {
   appearance.value = choice;
   const patch = settingsPatchForAppearance(choice);
@@ -407,6 +451,48 @@ watch(tab, (newTab) => {
       </button>
     </nav>
     <div v-if="tab === 'general'" class="space-y-6">
+      <!-- Profile picture -->
+      <div class="field">
+        <label class="label">{{ t('settings.profilePicture') }}</label>
+        <div class="flex items-center gap-4">
+          <UserAvatar
+            :username="authStore.username ?? ''"
+            :avatar-url="authStore.avatarUrl"
+            size="lg"
+          />
+          <div class="flex flex-col gap-2">
+            <div class="flex flex-wrap gap-2">
+              <button
+                type="button"
+                class="button is-primary"
+                :disabled="bAvatarSaving"
+                @click="avatarFileInput?.click()"
+              >
+                {{ authStore.avatarUrl ? t('settings.avatarChange') : t('settings.avatarUpload') }}
+              </button>
+              <button
+                v-if="authStore.avatarUrl"
+                type="button"
+                class="button is-transparent text-destructive hover:bg-destructive/10"
+                :disabled="bAvatarSaving"
+                @click="removeAvatar"
+              >
+                {{ t('settings.avatarRemove') }}
+              </button>
+            </div>
+            <p class="text-xs text-text-muted">{{ t('settings.avatarHint') }}</p>
+          </div>
+        </div>
+        <input
+          ref="avatarFileInput"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          class="hidden"
+          @change="onAvatarFileChange"
+        />
+        <p v-if="avatarMessage" class="message is-success mt-2">{{ avatarMessage }}</p>
+        <p v-if="avatarError" class="message is-error mt-2">{{ avatarError }}</p>
+      </div>
       <div class="field">
         <label class="label">{{ t('settings.theme') }}</label>
         <div

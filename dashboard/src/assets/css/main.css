@@ -84,8 +84,12 @@ select {
   @apply bg-input;
 }
 
-input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
-select {
+/* :where() keeps specificity at 0 so `.field .input-wrap` can override horizontal padding
+   for icon inputs without fighting this rule’s attribute-heavy :not() chain. */
+:where(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  select
+) {
   @apply h-10 min-h-[40px] max-h-10 py-0 px-3;
 }
 
@@ -141,13 +145,12 @@ input[type='radio'] {
       }
     }
 
-    &:has(.icon) {
-      input,
-      select {
-        @apply ps-8;
-      }
+    /* Room for the leading icon (see :where() on default input/select height rule). */
+    input,
+    select {
+      @apply ps-10;
     }
-    &:has(input:focus) {
+    &:focus-within {
       .icon {
         @apply text-primary!;
       }
@@ -176,7 +179,7 @@ input[type='radio'] {
     }
 
     .input-wrap {
-      &:has(input:focus) {
+      &:focus-within {
         .icon {
           @apply text-destructive! focus:text-destructive!;
         }

@@ -124,12 +124,14 @@ export const authApi = {
     username: string | null;
     userId: string | null;
     isAdmin: boolean;
+    avatarUrl?: string | null;
   }> {
     const response = await api.post<{
       valid: boolean;
       username: string | null;
       userId: string | null;
       isAdmin: boolean;
+      avatarUrl?: string | null;
     }>('/api/auth/validate');
     return response.data;
   },
@@ -390,6 +392,22 @@ export const apiKeysApi = {
   },
   async delete(id: string): Promise<void> {
     await api.delete(`/api/keys/${id}`);
+  },
+};
+
+// -------------------------------------------------- Avatar --------------------------------------------------
+
+export const avatarApi = {
+  async upload(file: File): Promise<{ avatarUrl: string }> {
+    const form = new FormData();
+    form.append('avatar', file);
+    const response = await api.post<{ avatarUrl: string }>('/api/users/avatar', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+  async remove(): Promise<void> {
+    await api.delete('/api/users/avatar');
   },
 };
 

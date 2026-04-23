@@ -23,7 +23,7 @@ const badgeClass = computed(() => {
   if (!props.dueDate || props.done) {
     return 'text-text-muted';
   }
-  if (isOverdue(props.dueDate, props.done)) {
+  if (isOverdue(props.dueDate, props.done, props.dueDateHasTime)) {
     return 'text-destructive';
   }
   if (isDueToday(props.dueDate)) {
@@ -42,7 +42,7 @@ const badgeClass = computed(() => {
     class="inline-flex items-center gap-1 text-xs"
     :class="badgeClass"
   >
-    <AlertCircle v-if="isOverdue(props.dueDate, props.done)" class="h-3.5 w-3.5 shrink-0" />
+    <AlertCircle v-if="isOverdue(props.dueDate, props.done, props.dueDateHasTime)" class="h-3.5 w-3.5 shrink-0" />
     {{ label }}
   </span>
 </template>

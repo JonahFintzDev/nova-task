@@ -217,6 +217,13 @@ export default {
     calendarRevoke: 'Revoke feed',
     calendarTokenVisible: 'This URL is shown once for this token state. Keep it private.',
     calendarCreatedAt: 'Created: {date}',
+    profilePicture: 'Profile picture',
+    avatarUpload: 'Upload picture',
+    avatarChange: 'Change picture',
+    avatarRemove: 'Remove',
+    avatarHint: 'JPEG, PNG, WebP or GIF · max 5 MB',
+    avatarSaved: 'Profile picture updated.',
+    avatarRemoved: 'Profile picture removed.',
   },
   recurrence: {
     label: 'Recurrence',

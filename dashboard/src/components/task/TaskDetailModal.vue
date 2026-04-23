@@ -155,7 +155,7 @@ const isTaskOverdue = computed(() => {
   if (!dueAt.value) {
     return false;
   }
-  return isOverdue(dueAt.value.toISOString(), false);
+  return isOverdue(dueAt.value.toISOString(), false, dueDateHasTime.value);
 });
 
 const priorityCardClass = computed(() => {

@@ -32,6 +32,7 @@ model User {
   autoTheme  Boolean @default(true)
   darkTheme  String?
   lightTheme String?
+  avatarExt  String?
 
   lists             List[]
   tasks             Task[]

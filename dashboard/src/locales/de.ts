@@ -221,6 +221,13 @@ export default {
     calendarRevoke: 'Feed widerrufen',
     calendarTokenVisible: 'Diese URL wird nur für diesen Token-Stand angezeigt. Privat halten.',
     calendarCreatedAt: 'Erstellt: {date}',
+    profilePicture: 'Profilbild',
+    avatarUpload: 'Bild hochladen',
+    avatarChange: 'Bild ändern',
+    avatarRemove: 'Entfernen',
+    avatarHint: 'JPEG, PNG, WebP oder GIF · max. 5 MB',
+    avatarSaved: 'Profilbild aktualisiert.',
+    avatarRemoved: 'Profilbild entfernt.',
   },
   recurrence: {
     label: 'Wiederholung',

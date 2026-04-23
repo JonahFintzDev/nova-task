@@ -127,6 +127,7 @@ async function updateUser(id: string, data: Prisma.UserUpdateInput) {
         autoTheme: true,
         darkTheme: true,
         lightTheme: true,
+        avatarExt: true,
       },
     });
   } catch {
@@ -155,6 +156,7 @@ async function listUsers() {
       autoTheme: true,
       darkTheme: true,
       lightTheme: true,
+      avatarExt: true,
     },
   });
 }
