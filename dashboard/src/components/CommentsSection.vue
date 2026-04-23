@@ -260,7 +260,7 @@ onMounted(() => {
     </div>
 
     <!-- Add Comment -->
-    <div v-if="canEdit" class="rounded-xl border border-border bg-surface p-4">
+    <div v-if="canEdit">
       <div class="flex items-start gap-3">
         <div
           class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary"

@@ -42,26 +42,26 @@ model User {
   sharedLists       ListShare[]
   comments          Comment[]
   activities        ActivityLog[]
-  assignedTasks     Task[]             @relation("TaskAssignee")
+  assignedTasks     Task[]              @relation("TaskAssignee")
   calendarFeeds     CalendarFeedToken[]
   apiKeys           ApiKey[]
 }
 
 model List {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  icon      String?
-  color     String?
-  category  String?
-  commentsEnabled Boolean @default(true)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  icon            String?
+  color           String?
+  category        String?
+  commentsEnabled Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  tasks  Task[]
-  shares ListShare[]
+  tasks                Task[]
+  shares               ListShare[]
   calendarFeedMappings CalendarFeedList[]
 }
 
@@ -182,17 +182,17 @@ model ActivityLog {
 }
 
 model CalendarFeedToken {
-  id          String   @id @default(cuid())
+  id          String             @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String?
-  tokenHash   String   @unique
-  includeDone Boolean  @default(false)
-  isActive    Boolean  @default(true)
+  tokenHash   String             @unique
+  includeDone Boolean            @default(false)
+  isActive    Boolean            @default(true)
   expiresAt   DateTime?
   lastUsedAt  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
   lists       CalendarFeedList[]
 
   @@index([userId, isActive])

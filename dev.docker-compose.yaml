@@ -28,12 +28,14 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-dev}@postgres:5432/${POSTGRES_DB:-nova_task}
       JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
       PORT: '3000'
       NODE_ENV: development
     volumes:
       - ./api/src:/app/src
       - ./api/prisma:/app/prisma
       - ./api/prisma.config.ts:/app/prisma.config.ts
+      - ./api/package.json:/app/package.json
     depends_on:
       postgres:
         condition: service_healthy
