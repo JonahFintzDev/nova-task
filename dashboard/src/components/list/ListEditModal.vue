@@ -170,7 +170,7 @@ const save = async (): Promise<void> => {
                 v-for="c in categoryOptions"
                 :key="c"
                 type="button"
-                class="rounded-full border border-border bg-input px-2 py-0.5 text-xs hover:border-primary"
+                class="rounded-full border-0 bg-bg px-2 py-0.5 text-xs hover:bg-primary/10"
                 @click="category = c"
               >
                 {{ c }}
@@ -184,7 +184,7 @@ const save = async (): Promise<void> => {
           >
             {{ t('list.comments') }}
           </label>
-          <div class="inline-flex rounded-md border border-border p-0.5">
+          <div class="inline-flex rounded-md border-0 bg-bg p-0.5">
             <button
               type="button"
               class="button !h-9 !max-h-9 !min-h-9 shrink-0 border-0 px-4 py-0 text-sm"

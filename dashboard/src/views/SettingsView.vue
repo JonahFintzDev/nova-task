@@ -348,7 +348,10 @@ const revokeCalendarFeed = async (feedId: string): Promise<void> => {
 
 function apiErrorMessage(error: unknown): string {
   if (error && typeof error === 'object') {
-    const e = error as { response?: { status?: number; data?: { error?: string; message?: string } }; message?: string };
+    const e = error as {
+      response?: { status?: number; data?: { error?: string; message?: string } };
+      message?: string;
+    };
     if (e.response) {
       const status = e.response.status ?? '?';
       const body = e.response.data?.error ?? e.response.data?.message;
@@ -450,7 +453,7 @@ watch(tab, (newTab) => {
         {{ t('apiKeys.tabLabel') }}
       </button>
     </nav>
-    <div v-if="tab === 'general'" class="space-y-6">
+    <div v-if="tab === 'general'" class="rounded-lg border border-border bg-surface p-4 space-y-6">
       <!-- Profile picture -->
       <div class="field">
         <label class="label">{{ t('settings.profilePicture') }}</label>
@@ -496,7 +499,7 @@ watch(tab, (newTab) => {
       <div class="field">
         <label class="label">{{ t('settings.theme') }}</label>
         <div
-          class="inline-flex w-max max-w-full flex-wrap items-stretch gap-0.5 rounded-md border border-border p-0.5"
+          class="inline-flex w-max max-w-full flex-wrap items-stretch gap-0.5 rounded-md border-0 bg-bg p-0.5"
         >
           <button
             type="button"
@@ -527,7 +530,7 @@ watch(tab, (newTab) => {
       <div class="field">
         <label class="label">{{ t('settings.displayLanguage') }}</label>
         <div
-          class="inline-flex w-max max-w-full flex-wrap items-stretch gap-0.5 rounded-md border border-border p-0.5"
+          class="inline-flex w-max max-w-full flex-wrap items-stretch gap-0.5 rounded-md border-0 bg-bg p-0.5"
         >
           <button
             type="button"
@@ -596,10 +599,16 @@ watch(tab, (newTab) => {
       <p class="text-sm text-text-muted">{{ t('settings.calendarDesc') }}</p>
 
       <div class="rounded-lg border border-border bg-surface p-4">
-        <h3 class="mb-3 text-sm font-semibold text-text-primary">{{ t('settings.calendarCreate') }}</h3>
+        <h3 class="mb-3 text-sm font-semibold text-text-primary">
+          {{ t('settings.calendarCreate') }}
+        </h3>
         <div class="field">
           <label class="label">{{ t('settings.calendarName') }}</label>
-          <input v-model="newFeedName" type="text" :placeholder="t('settings.calendarNamePlaceholder')" />
+          <input
+            v-model="newFeedName"
+            type="text"
+            :placeholder="t('settings.calendarNamePlaceholder')"
+          />
         </div>
         <div class="field mt-2">
           <label class="label">{{ t('settings.calendarIncludeDone') }}</label>
@@ -670,7 +679,11 @@ watch(tab, (newTab) => {
               </span>
             </div>
             <p class="mt-1 text-xs text-text-muted">
-              {{ t('settings.calendarCreatedAt', { date: dayjs(feed.createdAt).format('YYYY-MM-DD HH:mm') }) }}
+              {{
+                t('settings.calendarCreatedAt', {
+                  date: dayjs(feed.createdAt).format('YYYY-MM-DD HH:mm'),
+                })
+              }}
             </p>
             <div v-if="calendarDraftByFeedId[feed.id]" class="mt-3 space-y-3">
               <div>
@@ -732,10 +745,18 @@ watch(tab, (newTab) => {
               >
                 {{ t('common.save') }}
               </button>
-              <button type="button" class="button is-transparent" @click="rotateCalendarFeed(feed.id)">
+              <button
+                type="button"
+                class="button is-transparent"
+                @click="rotateCalendarFeed(feed.id)"
+              >
                 {{ t('settings.calendarRotate') }}
               </button>
-              <button type="button" class="button is-transparent" @click="revokeCalendarFeed(feed.id)">
+              <button
+                type="button"
+                class="button is-transparent"
+                @click="revokeCalendarFeed(feed.id)"
+              >
                 {{ t('settings.calendarRevoke') }}
               </button>
             </div>
@@ -745,19 +766,40 @@ watch(tab, (newTab) => {
     </div>
 
     <div v-else-if="tab === 'security'" class="space-y-4">
-      <div class="field">
-        <label class="label">{{ t('settings.currentPassword') }}</label>
-        <input v-model="currentPassword" type="password" autocomplete="current-password" />
+      <div class="rounded-lg border border-border bg-surface p-4">
+        <div class="field">
+          <label class="label">{{ t('settings.currentPassword') }}</label>
+          <input
+            v-model="currentPassword"
+            type="password"
+            autocomplete="current-password"
+            class="border border-border"
+          />
+        </div>
+        <div class="field">
+          <label class="label">{{ t('settings.newPassword') }}</label>
+          <input
+            v-model="newPassword"
+            type="password"
+            autocomplete="new-password"
+            class="border border-border"
+          />
+        </div>
+        <div class="field">
+          <label class="label">{{ t('settings.confirmPassword') }}</label>
+          <input
+            v-model="confirmPassword"
+            type="password"
+            autocomplete="new-password"
+            class="border border-border"
+          />
+        </div>
       </div>
-      <div class="field">
-        <label class="label">{{ t('settings.newPassword') }}</label>
-        <input v-model="newPassword" type="password" autocomplete="new-password" />
-      </div>
-      <div class="field">
-        <label class="label">{{ t('settings.confirmPassword') }}</label>
-        <input v-model="confirmPassword" type="password" autocomplete="new-password" />
-      </div>
-      <p v-if="message" class="message" :class="message.includes('success') ? 'is-success' : 'is-error'">
+      <p
+        v-if="message"
+        class="message"
+        :class="message.includes('success') ? 'is-success' : 'is-error'"
+      >
         {{ message }}
       </p>
       <button type="button" class="button is-primary" :disabled="bSaving" @click="changePassword">
@@ -799,10 +841,7 @@ watch(tab, (newTab) => {
       </div>
 
       <!-- Generated key banner (shown once) -->
-      <div
-        v-if="newKeyValue"
-        class="rounded-lg border border-primary/40 bg-primary/5 px-4 py-3"
-      >
+      <div v-if="newKeyValue" class="rounded-lg border border-primary/40 bg-primary/5 px-4 py-3">
         <p class="mb-2 text-xs font-medium text-text-primary">{{ t('apiKeys.keyGenerated') }}</p>
         <div class="flex flex-wrap items-center gap-2">
           <input

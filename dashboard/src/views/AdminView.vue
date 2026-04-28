@@ -106,8 +106,9 @@ const testAiSettings = async (): Promise<void> => {
     });
     aiTestResult.value = result;
   } catch (err) {
-    const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-      ?? (err instanceof Error ? err.message : String(err));
+    const msg =
+      (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+      (err instanceof Error ? err.message : String(err));
     aiTestResult.value = { ok: false, error: msg };
   } finally {
     bAiTesting.value = false;
@@ -118,10 +119,11 @@ const saveAiSettings = async (): Promise<void> => {
   bAiSaving.value = true;
   bAiSaved.value = false;
   try {
-    const payload: { aiApiUrl?: string | null; aiApiKey?: string | null; aiModel?: string | null } = {
-      aiApiUrl: aiApiUrl.value.trim() || null,
-      aiModel: aiModel.value.trim() || null,
-    };
+    const payload: { aiApiUrl?: string | null; aiApiKey?: string | null; aiModel?: string | null } =
+      {
+        aiApiUrl: aiApiUrl.value.trim() || null,
+        aiModel: aiModel.value.trim() || null,
+      };
     // Only send the key if the user actually typed something new
     if (aiApiKey.value.trim()) {
       payload.aiApiKey = aiApiKey.value.trim();
@@ -130,7 +132,9 @@ const saveAiSettings = async (): Promise<void> => {
     aiApiKey.value = '';
     await refresh();
     bAiSaved.value = true;
-    setTimeout(() => { bAiSaved.value = false; }, 3000);
+    setTimeout(() => {
+      bAiSaved.value = false;
+    }, 3000);
   } finally {
     bAiSaving.value = false;
   }
@@ -148,7 +152,7 @@ const saveAiSettings = async (): Promise<void> => {
         {{ t('admin.settings') }}
       </button>
     </nav>
-    <div v-if="tab === 'users'" class="overflow-x-auto rounded-md border border-border">
+    <div v-if="tab === 'users'" class="overflow-x-auto rounded-lg border border-border bg-surface">
       <table class="w-full text-left text-sm">
         <thead class="border-b border-border bg-card/40 text-text-muted">
           <tr>
@@ -162,7 +166,9 @@ const saveAiSettings = async (): Promise<void> => {
           <tr v-for="user in users" :key="user.id" class="border-b border-border/60">
             <td class="px-4 py-2">{{ user.username }}</td>
             <td class="px-4 py-2">{{ user.isAdmin ? '✓' : '—' }}</td>
-            <td class="px-4 py-2 text-text-muted">{{ new Date(user.createdAt).toLocaleString() }}</td>
+            <td class="px-4 py-2 text-text-muted">
+              {{ new Date(user.createdAt).toLocaleString() }}
+            </td>
             <td class="px-4 py-2 text-end">
               <button
                 type="button"
@@ -188,11 +194,11 @@ const saveAiSettings = async (): Promise<void> => {
       </table>
       <p v-if="bLoading" class="p-4 text-text-muted">{{ t('common.loading') }}</p>
     </div>
-    <div v-else class="space-y-4">
+    <div v-else class="rounded-lg border border-border bg-surface p-4 space-y-4">
       <div class="field">
         <label class="label">{{ t('admin.registration') }}</label>
         <div
-          class="inline-flex w-max max-w-full flex-wrap items-stretch gap-0.5 rounded-md border border-border p-0.5"
+          class="inline-flex w-max max-w-full flex-wrap items-stretch gap-0.5 rounded-md border-0 bg-bg p-0.5"
         >
           <button
             type="button"
@@ -215,7 +221,7 @@ const saveAiSettings = async (): Promise<void> => {
       <div class="field">
         <label class="label">{{ t('admin.comments') }}</label>
         <div
-          class="inline-flex w-max max-w-full flex-wrap items-stretch gap-0.5 rounded-md border border-border p-0.5"
+          class="inline-flex w-max max-w-full flex-wrap items-stretch gap-0.5 rounded-md border-0 bg-bg p-0.5"
         >
           <button
             type="button"
@@ -289,10 +295,14 @@ const saveAiSettings = async (): Promise<void> => {
             <span v-if="bAiSaved" class="text-xs text-green-500">{{ t('admin.aiSaved') }}</span>
           </div>
           <!-- Test result -->
-          <div v-if="aiTestResult !== null" class="mt-2 rounded-lg px-3 py-2 text-sm"
-            :class="aiTestResult.ok
-              ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-              : 'bg-destructive/10 text-destructive'"
+          <div
+            v-if="aiTestResult !== null"
+            class="mt-2 rounded-lg px-3 py-2 text-sm"
+            :class="
+              aiTestResult.ok
+                ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                : 'bg-destructive/10 text-destructive'
+            "
           >
             <span v-if="aiTestResult.ok">{{ t('admin.aiTestOk') }}</span>
             <span v-else>{{ t('admin.aiTestFail') }}: {{ aiTestResult.error }}</span>
@@ -303,11 +313,7 @@ const saveAiSettings = async (): Promise<void> => {
     <ConfirmModal
       :is-open="!!deleteTarget"
       :title="t('admin.deleteUser')"
-      :message="
-        deleteTarget
-          ? t('admin.confirmDeleteUser', { name: deleteTarget.username })
-          : ''
-      "
+      :message="deleteTarget ? t('admin.confirmDeleteUser', { name: deleteTarget.username }) : ''"
       destructive
       :confirm-label="t('common.delete')"
       @close="deleteTarget = null"

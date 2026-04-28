@@ -95,7 +95,7 @@ watch(time, (newValue, oldValue) => {
 </script>
 
 <template>
-  <div class="bg-input border border-border rounded-lg overflow-hidden">
+  <div class="bg-bg border-0 rounded-lg overflow-hidden">
     <VueDatePicker
       v-model="modelDate"
       :teleport="true"
@@ -110,7 +110,7 @@ watch(time, (newValue, oldValue) => {
     </VueDatePicker>
   </div>
   <div
-    class="mt-2 bg-input border border-border rounded-lg overflow-hidden"
+    class="mt-2 bg-bg border-0 rounded-lg overflow-hidden"
     :class="{
       'opacity-50': !modelDate,
       'is-empty': !modelHasTime,
@@ -143,6 +143,7 @@ watch(time, (newValue, oldValue) => {
 .dp__input {
   border: 0 !important;
   box-shadow: none !important;
+  background-color: var(--color-bg) !important;
 }
 .is-empty .dp__input {
   text-align: center !important;
@@ -153,6 +154,7 @@ watch(time, (newValue, oldValue) => {
 .dp__input:focus {
   border: 0 !important;
   box-shadow: none !important;
+  background-color: var(--color-bg) !important;
 }
 .dp__input_wrap .dp__input {
   padding-left: 36px !important;

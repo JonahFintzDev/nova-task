@@ -80,8 +80,8 @@ select {
   @apply outline-none;
   @apply transition-all;
   @apply rounded-lg;
-  @apply border border-border;
-  @apply bg-input;
+  @apply border-0;
+  @apply bg-bg;
 }
 
 /* :where() keeps specificity at 0 so `.field .input-wrap` can override horizontal padding

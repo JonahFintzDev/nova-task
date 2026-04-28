@@ -492,12 +492,12 @@ onUnmounted(() => {
               v-if="descriptionMode === 'edit'"
               v-model="description"
               :readonly="!canEditTask"
-              class="min-h-[600px] w-full resize-none font-mono text-sm leading-relaxed"
+              class="min-h-[200px] w-full resize-none font-mono text-sm leading-relaxed"
               :placeholder="t('task.descriptionPlaceholder')"
             />
             <div
               v-else
-              class="task-md-preview min-h-[600px] rounded-lg border border-border bg-bg/50 px-3 py-2 text-sm leading-relaxed"
+              class="task-md-preview min-h-[200px] rounded-lg border border-border bg-bg/50 px-3 py-2 text-sm leading-relaxed"
             >
               <div
                 v-if="renderedDescriptionHtml"
@@ -685,7 +685,10 @@ onUnmounted(() => {
                         ? 'font-normal text-primary'
                         : 'font-normal text-text-primary'
                     "
-                    @click="reminderOffset = opt.value; bReminderMenuOpen = false"
+                    @click="
+                      reminderOffset = opt.value;
+                      bReminderMenuOpen = false;
+                    "
                   >
                     {{ t(opt.label) }}
                   </button>

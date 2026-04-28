@@ -20,7 +20,7 @@ const emit = defineEmits<{
 
 <template>
   <div
-    class="inline-flex max-w-full items-stretch gap-0.5 overflow-hidden rounded-md border border-border p-1"
+    class="inline-flex max-w-full items-stretch gap-0.5 overflow-hidden rounded-md border-0 bg-bg p-1"
     role="tablist"
     :aria-label="props.ariaLabel"
   >
