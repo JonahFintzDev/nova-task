@@ -4,46 +4,9 @@ import { Type } from '@sinclair/typebox';
 
 // classes
 import { db } from '../classes/database';
-import { extractBearerToken, verifyToken } from '../classes/auth';
-
-// ---- GET /api/mcp/config - returns MCP server configuration
-//
-// This endpoint provides the configuration needed for MCP clients to connect.
-// It accepts both JWT (for dashboard) and API key (for external MCP clients) authentication.
-
-async function mcpAuthPreHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  // Try JWT first (for dashboard use)
-  const bearerToken = extractBearerToken(request);
-  if (bearerToken) {
-    try {
-      const payload = verifyToken(bearerToken);
-      const user = await db.findUserById(payload.userId);
-      if (user) {
-        (request as FastifyRequest & { apiUserId?: string }).apiUserId = user.id;
-        return;
-      }
-    } catch {
-      // Fall through to API key check
-    }
-  }
-
-  // Try API key (for external MCP clients)
-  const rawKey = request.headers['x-api-key'];
-  if (!rawKey || typeof rawKey !== 'string') {
-    await reply.code(401).send({ error: 'Missing X-Api-Key header or authorization token' });
-    return;
-  }
-  const record = await db.findApiKeyByRawKey(rawKey);
-  if (!record) {
-    await reply.code(401).send({ error: 'Invalid API key' });
-    return;
-  }
-  await db.touchApiKeyUsage(record.id);
-  (request as FastifyRequest & { apiUserId?: string }).apiUserId = record.userId;
-}
+import { jwtPreHandler } from '../classes/auth';
 
 export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
-  const preAuth = mcpAuthPreHandler as (req: FastifyRequest, rep: FastifyReply) => Promise<void>;
 
   // GET /api/mcp/config - Public endpoint, no auth required
   fastify.get(
@@ -255,7 +218,7 @@ export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get(
     '/api/mcp',
     {
-      preHandler: preAuth,
+      preHandler: jwtPreHandler,
       schema: {
         tags: ['MCP'],
         summary: 'MCP Server-Sent Events endpoint',
@@ -310,7 +273,7 @@ export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get(
     '/api/mcp/sse',
     {
-      preHandler: preAuth,
+      preHandler: jwtPreHandler,
       schema: {
         tags: ['MCP'],
         summary: 'MCP Server-Sent Events (alternative)',
@@ -358,7 +321,7 @@ export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post(
     '/api/mcp/tools/:toolName',
     {
-      preHandler: preAuth,
+      preHandler: jwtPreHandler,
       schema: {
         tags: ['MCP'],
         summary: 'Execute an MCP tool',
@@ -425,7 +388,7 @@ export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get(
     '/api/mcp/resources/*',
     {
-      preHandler: preAuth,
+      preHandler: jwtPreHandler,
       schema: {
         tags: ['MCP'],
         summary: 'Access an MCP resource',
