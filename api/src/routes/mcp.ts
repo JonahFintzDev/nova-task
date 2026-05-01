@@ -6,6 +6,22 @@ import { Type } from '@sinclair/typebox';
 import { db } from '../classes/database';
 import { jwtPreHandler } from '../classes/auth';
 
+// Pre-handler for API key authentication (used by SSE endpoints for external MCP clients)
+async function apiKeyPreHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const rawKey = request.headers['x-api-key'];
+  if (!rawKey || typeof rawKey !== 'string') {
+    await reply.code(401).send({ error: 'Missing X-Api-Key header' });
+    return;
+  }
+  const record = await db.findApiKeyByRawKey(rawKey);
+  if (!record) {
+    await reply.code(401).send({ error: 'Invalid API key' });
+    return;
+  }
+  await db.touchApiKeyUsage(record.id);
+  (request as FastifyRequest & { apiUserId?: string }).apiUserId = record.userId;
+}
+
 export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
 
   // GET /api/mcp/config - Public endpoint, no auth required
@@ -218,7 +234,7 @@ export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get(
     '/api/mcp',
     {
-      preHandler: jwtPreHandler,
+      preHandler: apiKeyPreHandler,
       schema: {
         tags: ['MCP'],
         summary: 'MCP Server-Sent Events endpoint',
@@ -273,7 +289,7 @@ export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get(
     '/api/mcp/sse',
     {
-      preHandler: jwtPreHandler,
+      preHandler: apiKeyPreHandler,
       schema: {
         tags: ['MCP'],
         summary: 'MCP Server-Sent Events (alternative)',
@@ -321,7 +337,7 @@ export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post(
     '/api/mcp/tools/:toolName',
     {
-      preHandler: jwtPreHandler,
+      preHandler: apiKeyPreHandler,
       schema: {
         tags: ['MCP'],
         summary: 'Execute an MCP tool',
@@ -388,7 +404,7 @@ export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get(
     '/api/mcp/resources/*',
     {
-      preHandler: jwtPreHandler,
+      preHandler: apiKeyPreHandler,
       schema: {
         tags: ['MCP'],
         summary: 'Access an MCP resource',
