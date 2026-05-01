@@ -29,6 +29,43 @@ async function apiKeyPreHandler(request: FastifyRequest, reply: FastifyReply): P
 }
 
 export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
+  // GET /.well-known/mcp/server-card - MCP server discovery (public)
+  fastify.get(
+    '/.well-known/mcp/server-card',
+    {
+      schema: {
+        tags: ['MCP'],
+        summary: 'MCP Server Card',
+        description: 'Returns the MCP server card for automatic discovery by MCP clients.',
+      },
+    },
+    async (request, reply) => {
+      console.log('[MCP] Server card requested');
+      const protocol = request.headers['x-forwarded-proto'] || 'http';
+      const host = request.headers.host || request.headers['x-forwarded-host'] || 'localhost';
+      const baseUrl = `${protocol}://${host}`;
+      const apiBaseUrl = `${baseUrl}/api`;
+
+      console.log('[MCP] Server card: baseUrl=', baseUrl, 'apiBaseUrl=', apiBaseUrl);
+      await reply.send({
+        name: 'Nova Task MCP Server',
+        version: '1.0.0',
+        description: 'Access your Nova Task data via MCP protocol.',
+        url: `${apiBaseUrl}/mcp`,
+        sseUrl: `${apiBaseUrl}/mcp/sse`,
+        configUrl: `${apiBaseUrl}/mcp/config`,
+        authentication: {
+          type: 'api_key',
+          headerName: 'X-Api-Key',
+          description: 'Generate an API key in Nova Task Settings → API Keys',
+        },
+        capabilities: {
+          tools: true,
+          resources: true,
+        },
+      });
+    },
+  );
 
   // GET /api/mcp/config - Public endpoint, no auth required
   fastify.get(
