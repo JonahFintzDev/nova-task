@@ -12,15 +12,16 @@ import { db } from '../classes/database';
 // ---- PATCH  /api/external/tasks/:id   — update a task
 // ---- DELETE /api/external/tasks/:id   — delete a task
 //
-// All routes authenticate via the X-Api-Key header.
+// All routes authenticate via Authorization: Bearer <api-key>.
 // Generate keys in the app's Settings → API Keys page.
 
 // -------------------------------------------------- Auth pre-handler --------------------------------------------------
 
 async function apiKeyPreHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const rawKey = request.headers['x-api-key'];
-  if (!rawKey || typeof rawKey !== 'string') {
-    await reply.code(401).send({ error: 'Missing X-Api-Key header' });
+  const auth = request.headers['authorization'];
+  const rawKey = auth?.startsWith('Bearer ') ? auth.slice(7) : undefined;
+  if (!rawKey) {
+    await reply.code(401).send({ error: 'Missing or invalid Authorization header' });
     return;
   }
   const record = await db.findApiKeyByRawKey(rawKey);

@@ -68,7 +68,7 @@ async function main(): Promise<void> {
         title: "Nova Task External API",
         description:
           "Public REST API for integrating external services with Nova Task.\n\n" +
-          "**Authentication:** All external endpoints require an `X-Api-Key` header. " +
+          "**Authentication:** All external endpoints require `Authorization: Bearer <api-key>`. " +
           "Generate keys in the app under **Settings → API Keys**.\n\n" +
           "**MCP Support:** Connect via Model Context Protocol at `/api/mcp/config`. " +
           "See **Settings → MCP** in the app for setup instructions.\n\n" +
@@ -78,10 +78,9 @@ async function main(): Promise<void> {
       components: {
         securitySchemes: {
           apiKey: {
-            type: "apiKey",
-            name: "X-Api-Key",
-            in: "header",
-            description: "API key generated in Settings → API Keys.",
+            type: "http",
+            scheme: "bearer",
+            description: "API key generated in Settings → API Keys. Send as: Authorization: Bearer <key>",
           },
           bearerAuth: {
             type: "http",
