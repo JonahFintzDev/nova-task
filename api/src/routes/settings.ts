@@ -29,6 +29,7 @@ export async function settingsRoutes(fastify: FastifyInstance): Promise<void> {
           autoTheme: Type.Optional(Type.Boolean()),
           darkTheme: Type.Optional(Type.Union([Type.String(), Type.Null()])),
           lightTheme: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+          aiFeaturesDisabled: Type.Optional(Type.Boolean()),
         }),
       },
     },

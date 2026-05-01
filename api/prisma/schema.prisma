@@ -33,6 +33,7 @@ model User {
   darkTheme  String?
   lightTheme String?
   avatarExt  String?
+  aiFeaturesDisabled Boolean @default(false)
 
   lists             List[]
   tasks             Task[]

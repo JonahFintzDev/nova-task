@@ -49,7 +49,7 @@ services:
     ports:
       - '8080:8080'
     environment:
-      VITE_API_URL: http://localhost:3001
+      VITE_API_URL: http://10.0.10.110:3001
     volumes:
       - ./dashboard/src:/app/src
       - ./dashboard/index.html:/app/index.html

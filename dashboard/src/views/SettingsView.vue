@@ -5,7 +5,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 // classes
-import { apiKeysApi, avatarApi, calendarApi, listApi, settingsApi } from '@/classes/api';
+import { apiKeysApi, avatarApi, calendarApi, listApi, mcpApi } from '@/classes/api';
 import type { ApiKey, ApiKeyWithPlainKey, CalendarFeed, List } from '@/@types/index';
 
 // lib
@@ -33,13 +33,16 @@ import UserAvatar from '@/components/shared/UserAvatar.vue';
 
 // stores
 import { useAuthStore } from '@/stores/auth';
+import { useSettingsStore } from '@/stores/settings';
 
 // -------------------------------------------------- Data --------------------------------------------------
 const { t, locale } = useI18n();
 const authStore = useAuthStore();
-const tab = ref<'general' | 'security' | 'notifications' | 'calendar' | 'apiKeys'>('general');
+const settingsStore = useSettingsStore();
+const tab = ref<'general' | 'security' | 'notifications' | 'calendar' | 'apiKeys' | 'mcp'>('general');
 const appearance = ref<AppearanceChoice>('auto');
 const language = ref<LocaleCode>('en');
+const aiFeaturesDisabled = ref(false);
 const currentPassword = ref('');
 const newPassword = ref('');
 const confirmPassword = ref('');
@@ -80,6 +83,11 @@ const apiKeysError = ref('');
 const apiKeysList = ref<ApiKey[]>([]);
 const newKeyName = ref('');
 const newKeyValue = ref<ApiKeyWithPlainKey | null>(null);
+
+// MCP
+const bMcpLoading = ref(false);
+const mcpError = ref('');
+const mcpConfig = ref<any>(null);
 
 const apiBaseUrl = computed(() => {
   const configured = (import.meta.env.VITE_API_URL as string | undefined)?.trim() ?? '';
@@ -134,13 +142,14 @@ const copyToClipboard = async (value: string): Promise<void> => {
 
 // -------------------------------------------------- Lifecycle --------------------------------------------------
 onMounted(async () => {
-  const settings = await settingsApi.get();
+  const settings = await settingsStore.load({ force: true });
   appearance.value = deriveAppearanceChoice({
     autoTheme: settings.autoTheme,
     darkTheme: settings.darkTheme,
     lightTheme: settings.lightTheme,
   });
   language.value = settings.language === 'de' ? 'de' : 'en';
+  aiFeaturesDisabled.value = settings.aiFeaturesDisabled;
   locale.value = language.value;
   dayjs.locale(language.value);
   applyUserThemePreferences({
@@ -189,7 +198,7 @@ const removeAvatar = async (): Promise<void> => {
 const persistAppearance = async (choice: AppearanceChoice): Promise<void> => {
   appearance.value = choice;
   const patch = settingsPatchForAppearance(choice);
-  await settingsApi.update(patch);
+  await settingsStore.update(patch);
   applyUserThemePreferences(patch);
 };
 
@@ -198,7 +207,17 @@ const onLanguageChange = async (code: LocaleCode): Promise<void> => {
   setLocale(code);
   locale.value = code;
   dayjs.locale(code);
-  await settingsApi.update({ language: code });
+  await settingsStore.update({ language: code });
+};
+
+const onToggleAiFeatures = async (): Promise<void> => {
+  const next = !aiFeaturesDisabled.value;
+  aiFeaturesDisabled.value = next;
+  try {
+    await settingsStore.update({ aiFeaturesDisabled: next });
+  } catch {
+    aiFeaturesDisabled.value = !next;
+  }
 };
 
 const onToggleNotifications = async (): Promise<void> => {
@@ -420,11 +439,38 @@ const copyValue = async (value: string): Promise<void> => {
   }
 };
 
+// -------------------------------------------------- MCP --------------------------------------------------
+
+const loadMcpConfig = async (): Promise<void> => {
+  bMcpLoading.value = true;
+  mcpError.value = '';
+  try {
+    mcpConfig.value = await mcpApi.getConfig();
+  } catch (error) {
+    mcpError.value = apiErrorMessage(error);
+  } finally {
+    bMcpLoading.value = false;
+  }
+};
+
+const copyMcpConfig = async (): Promise<void> => {
+  try {
+    const configStr = JSON.stringify(mcpConfig.value, null, 2);
+    await navigator.clipboard.writeText(configStr);
+  } catch {
+    mcpError.value = t('common.error');
+  }
+};
+
 watch(tab, (newTab) => {
   if (newTab === 'apiKeys') {
     apiKeysMessage.value = '';
     apiKeysError.value = '';
     loadApiKeys();
+  }
+  if (newTab === 'mcp') {
+    mcpError.value = '';
+    loadMcpConfig();
   }
 });
 </script>
@@ -451,6 +497,9 @@ watch(tab, (newTab) => {
       </button>
       <button type="button" :class="{ 'is-active': tab === 'apiKeys' }" @click="tab = 'apiKeys'">
         {{ t('apiKeys.tabLabel') }}
+      </button>
+      <button type="button" :class="{ 'is-active': tab === 'mcp' }" @click="tab = 'mcp'">
+        {{ t('mcp.tabLabel') }}
       </button>
     </nav>
     <div v-if="tab === 'general'" class="rounded-lg border border-border bg-surface p-4 space-y-6">
@@ -547,6 +596,28 @@ watch(tab, (newTab) => {
             @click="onLanguageChange('de')"
           >
             {{ t('settings.languageDe') }}
+          </button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label">{{ t('settings.aiFeatures') }}</label>
+        <div class="flex items-center justify-between gap-4 rounded-lg border border-border bg-bg px-4 py-3">
+          <div>
+            <p class="text-sm font-medium text-text-primary">{{ t('settings.aiFeaturesDisable') }}</p>
+            <p class="text-xs text-text-muted">{{ t('settings.aiFeaturesDisableDesc') }}</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="aiFeaturesDisabled"
+            class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
+            :class="aiFeaturesDisabled ? 'bg-primary' : 'bg-border'"
+            @click="onToggleAiFeatures"
+          >
+            <span
+              class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200"
+              :class="aiFeaturesDisabled ? 'translate-x-5' : 'translate-x-0'"
+            />
           </button>
         </div>
       </div>
@@ -915,6 +986,69 @@ watch(tab, (newTab) => {
           </button>
         </article>
       </div>
+    </div>
+
+    <!-- MCP tab -->
+    <div v-else-if="tab === 'mcp'" class="space-y-6">
+      <p class="text-sm text-text-muted">{{ t('mcp.desc') }}</p>
+
+      <p v-if="mcpError" class="message is-error">{{ mcpError }}</p>
+
+      <!-- Server URL and Authentication -->
+      <div class="rounded-lg border border-border bg-surface px-4 py-3 space-y-4">
+        <h3 class="text-sm font-semibold text-text-primary">{{ t('mcp.setupTitle') }}</h3>
+
+        <div>
+          <p class="mb-1 text-xs font-medium text-text-primary">{{ t('mcp.serverUrlLabel') }}</p>
+          <p class="mb-2 text-xs text-text-muted">{{ t('mcp.serverUrlDesc') }}</p>
+          <div class="flex flex-wrap items-center gap-2">
+            <input
+              :value="mcpConfig ? mcpConfig.mcpServerUrl : apiBaseUrl + '/api/mcp'"
+              type="text"
+              readonly
+              class="min-w-0 flex-1 text-xs font-mono"
+            />
+            <button type="button" class="button is-transparent" @click="copyValue(apiBaseUrl + '/api/mcp')">
+              {{ t('settings.calendarCopy') }}
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <p class="mb-1 text-xs font-medium text-text-primary">{{ t('mcp.authenticationTitle') }}</p>
+          <p class="text-xs text-text-muted">{{ t('mcp.authenticationDesc') }}</p>
+        </div>
+      </div>
+
+      <!-- Configuration -->
+      <div v-if="mcpConfig" class="rounded-lg border border-border bg-surface px-4 py-3 space-y-4">
+        <div class="flex flex-wrap justify-between items-center gap-2">
+          <h3 class="text-sm font-semibold text-text-primary">{{ t('mcp.configLabel') }}</h3>
+          <button type="button" class="button is-transparent" @click="copyMcpConfig">
+            {{ t('apiKeys.copy') }}
+          </button>
+        </div>
+
+        <div>
+          <p class="mb-1 text-xs font-medium text-text-primary">{{ t('mcp.toolsTitle') }}</p>
+          <ul class="mt-1 text-xs text-text-muted list-disc list-inside space-y-0.5">
+            <li v-for="tool in mcpConfig.tools" :key="tool.name">
+              <code class="font-mono">{{ tool.name }}</code>: {{ tool.description }}
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <p class="mb-1 text-xs font-medium text-text-primary">{{ t('mcp.resourcesTitle') }}</p>
+          <ul class="mt-1 text-xs text-text-muted list-disc list-inside space-y-0.5">
+            <li v-for="resource in mcpConfig.resources" :key="resource.uri">
+              <code class="font-mono">{{ resource.uri }}</code>: {{ resource.description }}
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div v-if="bMcpLoading" class="text-sm text-text-muted">{{ t('common.loading') }}</div>
     </div>
   </PageShell>
 </template>

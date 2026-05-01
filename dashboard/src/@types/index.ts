@@ -103,6 +103,7 @@ export interface UserSettings {
   autoTheme: boolean;
   darkTheme: string | null;
   lightTheme: string | null;
+  aiFeaturesDisabled: boolean;
 }
 
 export interface AppSettings {
@@ -143,4 +144,26 @@ export interface ApiKey {
 
 export interface ApiKeyWithPlainKey extends ApiKey {
   key: string;
+}
+
+export interface McpConfig {
+  mcpServerUrl: string;
+  apiBaseUrl: string;
+  apiKeyPrefix: string;
+  userId: string;
+  serverName: string;
+  serverVersion: string;
+  capabilities: string[];
+  tools: Array<{
+    name: string;
+    description: string;
+    inputSchema: Record<string, unknown>;
+  }>;
+  resources: Array<{
+    uri: string;
+    name: string;
+    description: string;
+    mimeType: string;
+  }>;
+  instructions: string;
 }

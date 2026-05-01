@@ -228,6 +228,9 @@ export default {
     avatarHint: 'JPEG, PNG, WebP oder GIF · max. 5 MB',
     avatarSaved: 'Profilbild aktualisiert.',
     avatarRemoved: 'Profilbild entfernt.',
+    aiFeatures: 'KI-Funktionen',
+    aiFeaturesDisable: 'KI-Funktionen deaktivieren',
+    aiFeaturesDisableDesc: 'KI-Vorschläge ausblenden und KI-Anfragen für dieses Konto verhindern.',
   },
   recurrence: {
     label: 'Wiederholung',
@@ -338,5 +341,18 @@ export default {
     docsDesc: 'Interaktive Swagger-Oberfläche mit allen verfügbaren Endpunkten.',
     copy: 'Kopieren',
     copied: 'In die Zwischenablage kopiert.',
+  },
+  mcp: {
+    tabLabel: 'MCP',
+    desc: 'Verbinden Sie MCP-Clients (Claude Code, Cursor usw.) mit Nova Task unter Verwendung Ihrer API-Schlüssel.',
+    setupTitle: 'Einrichtung',
+    serverUrlLabel: 'Server-URL',
+    serverUrlDesc: 'Verwenden Sie diese URL in Ihrer MCP-Client-Konfiguration.',
+    authenticationTitle: 'Authentifizierung',
+    authenticationDesc: 'Verwenden Sie einen Ihrer vorhandenen API-Schlüssel aus dem Tab "API-Schlüssel". Übersenden Sie ihn als X-Api-Key-Header.',
+    configLabel: 'Konfiguration',
+    toolsTitle: 'Tools',
+    resourcesTitle: 'Ressourcen',
+    copy: 'JSON kopieren',
   },
 };

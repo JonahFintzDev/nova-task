@@ -31,6 +31,12 @@ export async function aiRoutes(fastify: FastifyInstance): Promise<void> {
         taskId?: string;
       };
 
+      const userSettings = await db.getUserSettings(userId);
+      if (userSettings?.aiFeaturesDisabled) {
+        await reply.code(403).send({ error: 'AI features are disabled for this account.' });
+        return;
+      }
+
       // Verify list write access
       const access = await db.getListAccess(listId, userId);
       if (!access || (!access.isOwner && access.permission === 'READ')) {

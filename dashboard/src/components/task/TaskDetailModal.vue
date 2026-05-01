@@ -26,6 +26,7 @@ import TaskAssign from '@/components/TaskAssign.vue';
 
 // stores
 import { useListsStore } from '@/stores/lists';
+import { useSettingsStore } from '@/stores/settings';
 import { useTagsStore } from '@/stores/tags';
 import { useTasksStore } from '@/stores/tasks';
 
@@ -52,6 +53,7 @@ const emit = defineEmits<{
 // -------------------------------------------------- Store --------------------------------------------------
 const tasksStore = useTasksStore();
 const listsStore = useListsStore();
+const settingsStore = useSettingsStore();
 const tagsStore = useTagsStore();
 const { t } = useI18n();
 
@@ -430,6 +432,7 @@ const onPriorityMenuDocumentClick = (event: MouseEvent): void => {
 // -------------------------------------------------- Lifecycle --------------------------------------------------
 onMounted(() => {
   document.addEventListener('click', onPriorityMenuDocumentClick);
+  void settingsStore.load();
 });
 
 onUnmounted(() => {
@@ -542,7 +545,7 @@ onUnmounted(() => {
               :depth="0"
               embedded
             />
-            <div v-if="canEditTask" class="mt-3">
+            <div v-if="canEditTask && !settingsStore.aiFeaturesDisabled" class="mt-3">
               <AiSuggestBox
                 :list-id="props.task.listId"
                 :task-id="props.task.id"

@@ -128,6 +128,7 @@ async function updateUser(id: string, data: Prisma.UserUpdateInput) {
         darkTheme: true,
         lightTheme: true,
         avatarExt: true,
+        aiFeaturesDisabled: true,
       },
     });
   } catch {
@@ -157,6 +158,7 @@ async function listUsers() {
       darkTheme: true,
       lightTheme: true,
       avatarExt: true,
+      aiFeaturesDisabled: true,
     },
   });
 }
@@ -957,6 +959,7 @@ async function getUserSettings(userId: string) {
     autoTheme: user.autoTheme,
     darkTheme: user.darkTheme,
     lightTheme: user.lightTheme,
+    aiFeaturesDisabled: user.aiFeaturesDisabled,
   };
 }
 
@@ -967,6 +970,7 @@ async function updateUserSettings(
     autoTheme?: boolean;
     darkTheme?: string | null;
     lightTheme?: string | null;
+    aiFeaturesDisabled?: boolean;
   },
 ) {
   return _prisma.user.update({
@@ -977,6 +981,7 @@ async function updateUserSettings(
       autoTheme: true,
       darkTheme: true,
       lightTheme: true,
+      aiFeaturesDisabled: true,
     },
   });
 }

@@ -25,6 +25,7 @@ import { externalRoutes } from "./routes/external";
 import { healthRoutes } from "./routes/health";
 import { keysRoutes } from "./routes/keys";
 import { listsRoutes } from "./routes/lists";
+import { mcpRoutes } from "./routes/mcp";
 import { pushRoutes } from "./routes/push";
 import { recurrenceRoutes } from "./routes/recurrence";
 import { searchRoutes } from "./routes/search";
@@ -69,6 +70,8 @@ async function main(): Promise<void> {
           "Public REST API for integrating external services with Nova Task.\n\n" +
           "**Authentication:** All external endpoints require an `X-Api-Key` header. " +
           "Generate keys in the app under **Settings → API Keys**.\n\n" +
+          "**MCP Support:** Connect via Model Context Protocol at `/api/mcp/config`. " +
+          "See **Settings → MCP** in the app for setup instructions.\n\n" +
           "Key management endpoints use a standard `Authorization: Bearer <jwt>` header.",
         version: "1.0.0",
       },
@@ -96,6 +99,10 @@ async function main(): Promise<void> {
         {
           name: "API Keys",
           description: "Manage the API keys used to authenticate external requests.",
+        },
+        {
+          name: "MCP",
+          description: "Model Context Protocol endpoints for connecting MCP clients to Nova Task.",
         },
       ],
     },
@@ -132,6 +139,7 @@ async function main(): Promise<void> {
   await fastify.register(aiRoutes);
   await fastify.register(keysRoutes);
   await fastify.register(externalRoutes);
+  await fastify.register(mcpRoutes);
   await fastify.register(wsRoutes);
 
   if (config.isProduction) {

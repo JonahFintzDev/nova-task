@@ -20,6 +20,29 @@ import type {
 } from '@/@types/index';
 import type { Priority } from '@/@types/index';
 
+// MCP types
+export interface McpConfig {
+  mcpServerUrl: string;
+  apiBaseUrl: string;
+  apiKeyPrefix: string;
+  userId: string;
+  serverName: string;
+  serverVersion: string;
+  capabilities: string[];
+  tools: Array<{
+    name: string;
+    description: string;
+    inputSchema: Record<string, unknown>;
+  }>;
+  resources: Array<{
+    uri: string;
+    name: string;
+    description: string;
+    mimeType: string;
+  }>;
+  instructions: string;
+}
+
 const TOKEN_KEY = 'nova-task-token';
 
 export const api: AxiosInstance = axios.create({
@@ -634,6 +657,15 @@ export const collaborationApi = {
   },
   async unassignTask(taskId: string): Promise<Task> {
     const response = await api.delete<Task>(`/api/tasks/${taskId}/assign`);
+    return response.data;
+  },
+};
+
+// -------------------------------------------------- MCP --------------------------------------------------
+
+export const mcpApi = {
+  async getConfig(): Promise<McpConfig> {
+    const response = await api.get<McpConfig>('/api/mcp/config');
     return response.data;
   },
 };

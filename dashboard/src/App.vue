@@ -7,7 +7,6 @@ import { RouterView } from 'vue-router';
 
 // classes
 import { fetchNeedsSetup } from '@/classes/router';
-import { settingsApi } from '@/classes/api';
 
 // lib
 import { fadeInElement } from '@/lib/gsap';
@@ -16,10 +15,12 @@ import { detectBrowserLocale, setLocale, type LocaleCode } from '@/lib/i18n';
 
 // stores
 import { useAuthStore } from '@/stores/auth';
+import { useSettingsStore } from '@/stores/settings';
 
 // -------------------------------------------------- Data --------------------------------------------------
 const bBooting = ref(true);
 const authStore = useAuthStore();
+const settingsStore = useSettingsStore();
 const { t } = useI18n();
 const appRoot = ref<HTMLElement | null>(null);
 
@@ -37,7 +38,7 @@ const applyGuestLocale = (): void => {
 
 const applyAuthenticatedSettings = async (): Promise<void> => {
   try {
-    const settings = await settingsApi.get();
+    const settings = await settingsStore.load({ force: true });
     const locale = (settings.language === 'de' ? 'de' : 'en') as LocaleCode;
     setLocale(locale);
     dayjs.locale(locale);
@@ -77,6 +78,7 @@ watch(
       await applyAuthenticatedSettings();
     }
     if (!ok && was === true) {
+      settingsStore.clear();
       applyGuestLocale();
     }
   },

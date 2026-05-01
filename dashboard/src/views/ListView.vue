@@ -27,6 +27,7 @@ import { routeParamToString } from '@/lib/utils';
 
 // stores
 import { useListsStore } from '@/stores/lists';
+import { useSettingsStore } from '@/stores/settings';
 import { useTagsStore } from '@/stores/tags';
 import { useTasksStore } from '@/stores/tasks';
 
@@ -37,6 +38,7 @@ import type { Priority, Task } from '@/@types/index';
 const route = useRoute();
 const router = useRouter();
 const listsStore = useListsStore();
+const settingsStore = useSettingsStore();
 const tagsStore = useTagsStore();
 const tasksStore = useTasksStore();
 const { t } = useI18n();
@@ -593,6 +595,7 @@ watch([bTaskOpen, activeTask], async ([isOpen, task]) => {
 // -------------------------------------------------- Lifecycle --------------------------------------------------
 onMounted(() => {
   document.addEventListener('click', onListMenuDocumentClick);
+  void settingsStore.load();
   void listsStore.fetchLists().then(() => load());
 });
 
@@ -769,7 +772,7 @@ onUnmounted(() => {
 
       <!-- AI Suggest Box (collapsible, per-list state) -->
       <details
-        v-if="canEditCurrentList"
+        v-if="canEditCurrentList && !settingsStore.aiFeaturesDisabled"
         :open="bAiOpen"
         class="mb-6"
         @toggle="bAiOpen = ($event.target as HTMLDetailsElement).open"

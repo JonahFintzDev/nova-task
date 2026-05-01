@@ -224,6 +224,9 @@ export default {
     avatarHint: 'JPEG, PNG, WebP or GIF · max 5 MB',
     avatarSaved: 'Profile picture updated.',
     avatarRemoved: 'Profile picture removed.',
+    aiFeatures: 'AI features',
+    aiFeaturesDisable: 'Disable AI features',
+    aiFeaturesDisableDesc: 'Hide AI suggestions and prevent AI requests for this account.',
   },
   recurrence: {
     label: 'Recurrence',
@@ -334,5 +337,18 @@ export default {
     docsDesc: 'Interactive Swagger UI with all available endpoints.',
     copy: 'Copy',
     copied: 'Copied to clipboard.',
+  },
+  mcp: {
+    tabLabel: 'MCP',
+    desc: 'Connect MCP clients (Claude Code, Cursor, etc.) to Nova Task using your API keys.',
+    setupTitle: 'Setup',
+    serverUrlLabel: 'Server URL',
+    serverUrlDesc: 'Use this URL in your MCP client configuration.',
+    authenticationTitle: 'Authentication',
+    authenticationDesc: 'Use any of your existing API keys from the API Keys tab. Pass it as the X-Api-Key header.',
+    configLabel: 'Configuration',
+    toolsTitle: 'Tools',
+    resourcesTitle: 'Resources',
+    copy: 'Copy JSON',
   },
 };
