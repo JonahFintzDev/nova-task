@@ -9,15 +9,21 @@ import { jwtPreHandler } from '../classes/auth';
 // Pre-handler for API key authentication (used by SSE endpoints for external MCP clients)
 async function apiKeyPreHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const rawKey = request.headers['x-api-key'];
+  console.log('[MCP] Auth attempt - headers:', JSON.stringify(request.headers, null, 2));
+  console.log('[MCP] Raw API key:', rawKey ? `${rawKey.slice(0, 8)}...` : 'MISSING');
+  
   if (!rawKey || typeof rawKey !== 'string') {
+    console.log('[MCP] Auth FAILED: Missing X-Api-Key header');
     await reply.code(401).send({ error: 'Missing X-Api-Key header' });
     return;
   }
   const record = await db.findApiKeyByRawKey(rawKey);
   if (!record) {
+    console.log('[MCP] Auth FAILED: Invalid API key (prefix:', rawKey.slice(0, 8) + ')');
     await reply.code(401).send({ error: 'Invalid API key' });
     return;
   }
+  console.log('[MCP] Auth SUCCESS: userId=', record.userId);
   await db.touchApiKeyUsage(record.id);
   (request as FastifyRequest & { apiUserId?: string }).apiUserId = record.userId;
 }
@@ -247,6 +253,7 @@ export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
     },
     async (request, reply) => {
       const userId = (request as FastifyRequest & { apiUserId?: string }).apiUserId!;
+      console.log('[MCP] SSE connection established for user:', userId);
 
       // Set SSE headers
       reply.header('Content-Type', 'text/event-stream');
@@ -261,6 +268,7 @@ export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
         serverVersion: '1.0.0',
         userId,
       };
+      console.log('[MCP] Sending welcome message:', JSON.stringify(initialMessage));
 
       reply.send(`data: ${JSON.stringify(initialMessage)}\n\n`);
 
