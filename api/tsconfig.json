@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "nodenext",
+    "module": "commonjs",
     "lib": ["ESNext"],
     "outDir": "build",
     "rootDir": "src",
@@ -11,7 +11,19 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "declaration": false,
-    "moduleResolution": "nodenext"
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@modelcontextprotocol/sdk/server": [
+        "node_modules/@modelcontextprotocol/sdk/dist/cjs/server/index"
+      ],
+      "@modelcontextprotocol/sdk/server/streamableHttp.js": [
+        "node_modules/@modelcontextprotocol/sdk/dist/cjs/server/streamableHttp"
+      ],
+      "@modelcontextprotocol/sdk/types.js": [
+        "node_modules/@modelcontextprotocol/sdk/dist/cjs/types"
+      ]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "build"]

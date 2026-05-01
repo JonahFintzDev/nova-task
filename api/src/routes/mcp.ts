@@ -13,7 +13,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 // classes
-import { db } from '../classes/database.js';
+import { db } from '../classes/database';
 
 // -------------------------------------------------- Types --------------------------------------------------
 

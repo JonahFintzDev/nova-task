@@ -2,7 +2,7 @@
 FROM node:22-bookworm AS dashboard-builder
 WORKDIR /build/dashboard
 COPY dashboard/package.json dashboard/package-lock.json* ./
-RUN npm install
+RUN npm ci
 COPY dashboard/ ./
 RUN npm run build
 
@@ -11,7 +11,7 @@ FROM node:24-bookworm AS api-builder
 WORKDIR /build/api
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY api/package.json api/package-lock.json* ./
-RUN npm install
+RUN npm ci
 COPY api/prisma ./prisma
 COPY api/prisma.config.ts ./
 COPY api/tsconfig.json ./
