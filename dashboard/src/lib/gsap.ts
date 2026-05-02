@@ -113,3 +113,26 @@ export function staggerGridItems(container: HTMLElement | null, selector = '.gri
     },
   );
 }
+
+/** Exit animation when marking a task complete (before it leaves the active list). */
+export function animateTaskCompleteExit(el: HTMLElement | null, done: () => void): void {
+  if (!el) {
+    done();
+    return;
+  }
+  if (prefersReducedMotion()) {
+    done();
+    return;
+  }
+  gsap.to(el, {
+    opacity: 0,
+    x: 12,
+    scale: 0.98,
+    duration: 0.32,
+    ease: 'power2.in',
+    onComplete: () => {
+      gsap.set(el, { clearProps: 'opacity,transform' });
+      done();
+    },
+  });
+}

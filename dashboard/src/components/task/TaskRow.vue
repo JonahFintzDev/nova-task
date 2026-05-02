@@ -5,6 +5,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 // lib
+import { animateTaskCompleteExit } from '@/lib/gsap';
 import { priorityLabel } from '@/lib/utils';
 
 // components
@@ -33,6 +34,8 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const bMenuOpen = ref(false);
 const menuRoot = ref<HTMLElement | null>(null);
+const rowRoot = ref<HTMLElement | null>(null);
+const bCompleting = ref(false);
 
 // -------------------------------------------------- Computed --------------------------------------------------
 const priorityText = computed(() => {
@@ -82,6 +85,21 @@ const onDelete = (): void => {
   emit('delete', props.task);
 };
 
+const onToggleDone = (): void => {
+  if (!editable.value || bCompleting.value) {
+    return;
+  }
+  if (props.task.done) {
+    emit('toggleDone', props.task);
+    return;
+  }
+  bCompleting.value = true;
+  animateTaskCompleteExit(rowRoot.value, () => {
+    bCompleting.value = false;
+    emit('toggleDone', props.task);
+  });
+};
+
 // -------------------------------------------------- Lifecycle --------------------------------------------------
 onMounted(() => {
   document.addEventListener('click', onDocumentClick);
@@ -94,6 +112,7 @@ onUnmounted(() => {
 
 <template>
   <div
+    ref="rowRoot"
     class="task-row flex w-full min-w-0 flex-row items-center gap-3 px-4 py-3 transition-opacity"
     :class="[editable ? 'cursor-pointer' : 'cursor-default', props.task.done ? 'opacity-60' : '']"
     @click="onRowClick"
@@ -112,7 +131,7 @@ onUnmounted(() => {
       type="button"
       class="button is-icon is-transparent shrink-0 text-text-muted hover:text-primary"
       :title="props.task.done ? t('task.undone') : t('task.done')"
-      @click.stop="emit('toggleDone', props.task)"
+      @click.stop="onToggleDone"
     >
       <CheckCircle2 v-if="props.task.done" class="h-5 w-5 text-primary" />
       <Circle v-else class="h-5 w-5" />
