@@ -33,6 +33,15 @@ import { useTasksStore } from '@/stores/tasks';
 // types
 import type { Priority, RecurringRule, Task } from '@/@types/index';
 
+// -------------------------------------------------- Types --------------------------------------------------
+interface FormSnapshot {
+  title: string;
+  description: string;
+  dueAtIso: string | null;
+  priority: Priority;
+  tagIds: string[];
+}
+
 // -------------------------------------------------- Props --------------------------------------------------
 const props = defineProps<{
   isOpen: boolean;
@@ -57,6 +66,20 @@ const settingsStore = useSettingsStore();
 const tagsStore = useTagsStore();
 const { t } = useI18n();
 
+// -------------------------------------------------- Const --------------------------------------------------
+const REMINDER_OPTIONS: { label: string; value: number | null }[] = [
+  { label: 'task.reminderNone', value: null },
+  { label: 'task.reminder15m', value: 15 },
+  { label: 'task.reminder30m', value: 30 },
+  { label: 'task.reminder1h', value: 60 },
+  { label: 'task.reminder3h', value: 180 },
+  { label: 'task.reminder1d', value: 1440 },
+  { label: 'task.reminder2d', value: 2880 },
+  { label: 'task.reminder1w', value: 10080 },
+];
+
+const PRIORITIES: readonly Priority[] = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+
 // -------------------------------------------------- Data --------------------------------------------------
 const title = ref('');
 const description = ref('');
@@ -80,40 +103,6 @@ const pendingRule = ref<
 // Reminder
 const reminderOffset = ref<number | null>(null);
 const commentsEnabled = ref(true);
-
-const REMINDER_OPTIONS: { label: string; value: number | null }[] = [
-  { label: 'task.reminderNone', value: null },
-  { label: 'task.reminder15m', value: 15 },
-  { label: 'task.reminder30m', value: 30 },
-  { label: 'task.reminder1h', value: 60 },
-  { label: 'task.reminder3h', value: 180 },
-  { label: 'task.reminder1d', value: 1440 },
-  { label: 'task.reminder2d', value: 2880 },
-  { label: 'task.reminder1w', value: 10080 },
-];
-
-const PRIORITIES: readonly Priority[] = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'URGENT'];
-
-const normalizeListId = (value: unknown): string => {
-  if (typeof value === 'string') {
-    return value;
-  }
-  if (value && typeof value === 'object' && 'value' in value) {
-    const nested = (value as { value?: unknown }).value;
-    if (typeof nested === 'string') {
-      return nested;
-    }
-  }
-  return '';
-};
-
-interface FormSnapshot {
-  title: string;
-  description: string;
-  dueAtIso: string | null;
-  priority: Priority;
-  tagIds: string[];
-}
 
 const snapshot = ref<FormSnapshot | null>(null);
 const titleInputRef = ref<HTMLInputElement | null>(null);
@@ -192,101 +181,6 @@ const descriptionModeOptions = computed(() => [
   { value: 'preview', label: t('task.descriptionPreview') },
 ]);
 
-// -------------------------------------------------- Watchers --------------------------------------------------
-watch(
-  () =>
-    [
-      props.isOpen,
-      props.task?.id ?? '',
-      props.listId ?? '',
-      props.parentTaskId ?? '',
-      props.initialTitle ?? '',
-    ] as const,
-  async () => {
-    if (!props.isOpen) {
-      return;
-    }
-    try {
-      const health = await healthApi.check();
-      commentsEnabled.value = health.commentsEnabled;
-    } catch {
-      commentsEnabled.value = true;
-    }
-    try {
-      await tagsStore.fetchTags();
-    } catch {
-      /* offline: keep existing tag list */
-    }
-    try {
-      await listsStore.fetchLists();
-    } catch {
-      /* offline: keep cached lists */
-    }
-    if (props.task) {
-      title.value = props.task.title;
-      description.value = props.task.description ?? '';
-      if (props.task.dueDate) {
-        const d = new Date(props.task.dueDate);
-        if (Number.isNaN(d.getTime())) {
-          dueAt.value = null;
-          dueDateHasTime.value = false;
-        } else {
-          dueAt.value = d;
-          dueDateHasTime.value = props.task.dueDateHasTime;
-        }
-      } else {
-        dueAt.value = null;
-        dueDateHasTime.value = false;
-      }
-
-      priority.value = props.task.priority;
-      selectedTagIds.value = props.task.tags.map((tag) => tag.id);
-      // Load recurrence rule
-      currentRule.value = props.task.recurringRule ?? null;
-      pendingRule.value = undefined;
-      reminderOffset.value = props.task.reminderOffset ?? null;
-    } else {
-      title.value = props.initialTitle ?? '';
-      description.value = '';
-      dueAt.value = null;
-      dueDateHasTime.value = false;
-      priority.value = 'NONE';
-      selectedTagIds.value = [];
-      currentRule.value = null;
-      pendingRule.value = undefined;
-      reminderOffset.value = null;
-    }
-    descriptionMode.value = description.value.trim() ? 'preview' : 'edit';
-    captureSnapshot();
-    if (!props.task && canEditTask.value) {
-      void focusTitleForNewTask();
-    }
-  },
-);
-
-async function focusTitleForNewTask(): Promise<void> {
-  await nextTick();
-  const apply = (): void => {
-    const el = titleInputRef.value;
-    if (!el || props.task || !props.isOpen || !canEditTask.value) {
-      return;
-    }
-    el.focus({ preventScroll: true });
-    if (el.value.length > 0) {
-      el.select();
-    }
-  };
-  if (prefersReducedMotion()) {
-    requestAnimationFrame(apply);
-    return;
-  }
-  window.setTimeout(apply, 320);
-}
-
-watch(dueAt, (value) => {
-  if (value === null) dueDateHasTime.value = false;
-});
-
 // -------------------------------------------------- Methods --------------------------------------------------
 const captureSnapshot = (): void => {
   snapshot.value = {
@@ -296,6 +190,19 @@ const captureSnapshot = (): void => {
     priority: priority.value,
     tagIds: [...selectedTagIds.value],
   };
+};
+
+const normalizeListId = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (value && typeof value === 'object' && 'value' in value) {
+    const nested = (value as { value?: unknown }).value;
+    if (typeof nested === 'string') {
+      return nested;
+    }
+  }
+  return '';
 };
 
 const discardChanges = (): void => {
@@ -428,6 +335,101 @@ const onPriorityMenuDocumentClick = (event: MouseEvent): void => {
     }
   }
 };
+
+// -------------------------------------------------- Watchers --------------------------------------------------
+watch(
+  () =>
+    [
+      props.isOpen,
+      props.task?.id ?? '',
+      props.listId ?? '',
+      props.parentTaskId ?? '',
+      props.initialTitle ?? '',
+    ] as const,
+  async () => {
+    if (!props.isOpen) {
+      return;
+    }
+    try {
+      const health = await healthApi.check();
+      commentsEnabled.value = health.commentsEnabled;
+    } catch {
+      commentsEnabled.value = true;
+    }
+    try {
+      await tagsStore.fetchTags();
+    } catch {
+      /* offline: keep existing tag list */
+    }
+    try {
+      await listsStore.fetchLists();
+    } catch {
+      /* offline: keep cached lists */
+    }
+    if (props.task) {
+      title.value = props.task.title;
+      description.value = props.task.description ?? '';
+      if (props.task.dueDate) {
+        const d = new Date(props.task.dueDate);
+        if (Number.isNaN(d.getTime())) {
+          dueAt.value = null;
+          dueDateHasTime.value = false;
+        } else {
+          dueAt.value = d;
+          dueDateHasTime.value = props.task.dueDateHasTime;
+        }
+      } else {
+        dueAt.value = null;
+        dueDateHasTime.value = false;
+      }
+
+      priority.value = props.task.priority;
+      selectedTagIds.value = props.task.tags.map((tag) => tag.id);
+      // Load recurrence rule
+      currentRule.value = props.task.recurringRule ?? null;
+      pendingRule.value = undefined;
+      reminderOffset.value = props.task.reminderOffset ?? null;
+    } else {
+      title.value = props.initialTitle ?? '';
+      description.value = '';
+      dueAt.value = null;
+      dueDateHasTime.value = false;
+      priority.value = 'NONE';
+      selectedTagIds.value = [];
+      currentRule.value = null;
+      pendingRule.value = undefined;
+      reminderOffset.value = null;
+    }
+    descriptionMode.value = description.value.trim() ? 'preview' : 'edit';
+    captureSnapshot();
+    if (!props.task && canEditTask.value) {
+      void focusTitleForNewTask();
+    }
+  },
+);
+
+async function focusTitleForNewTask(): Promise<void> {
+  await nextTick();
+  const apply = (): void => {
+    const el = titleInputRef.value;
+    if (!el || props.task || !props.isOpen || !canEditTask.value) {
+      return;
+    }
+    el.focus({ preventScroll: true });
+    if (el.value.length > 0) {
+      el.select();
+    }
+  };
+  if (prefersReducedMotion()) {
+    requestAnimationFrame(apply);
+    return;
+  }
+  window.setTimeout(apply, 320);
+}
+
+watch(dueAt, (value) => {
+  if (value === null) dueDateHasTime.value = false;
+});
 
 // -------------------------------------------------- Lifecycle --------------------------------------------------
 onMounted(() => {

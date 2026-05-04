@@ -83,14 +83,25 @@ export function dropdownLeave(el: Element, done: () => void): void {
     done();
     return;
   }
-  gsap.to(el, { opacity: 0, y: -4, scale: 0.98, duration: 0.15, ease: 'power2.in', onComplete: done });
+  gsap.to(el, {
+    opacity: 0,
+    y: -4,
+    scale: 0.98,
+    duration: 0.15,
+    ease: 'power2.in',
+    onComplete: done,
+  });
 }
 
 export function fadeInElement(el: HTMLElement | null): void {
   if (!el || prefersReducedMotion()) {
     return;
   }
-  gsap.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.45, ease: 'power2.out', clearProps: 'opacity' });
+  gsap.fromTo(
+    el,
+    { opacity: 0 },
+    { opacity: 1, duration: 0.45, ease: 'power2.out', clearProps: 'opacity' },
+  );
 }
 
 export function staggerGridItems(container: HTMLElement | null, selector = '.grid-item'): void {
@@ -126,12 +137,12 @@ export function animateTaskCompleteExit(el: HTMLElement | null, done: () => void
   }
   gsap.to(el, {
     opacity: 0,
-    x: 12,
-    scale: 0.98,
-    duration: 0.32,
-    ease: 'power2.in',
+    x: 200,
+    duration: 0.5,
+    border: '2px solid #199b02',
+    backgroundColor: '#199b0200',
     onComplete: () => {
-      gsap.set(el, { clearProps: 'opacity,transform' });
+      // gsap.set(el, { clearProps: 'opacity,transform' });
       done();
     },
   });

@@ -1,6 +1,8 @@
 <script setup lang="ts">
+// node_modules
 import { computed } from 'vue';
 
+// classes
 import { useDataTheme } from '@/composables/useDataTheme';
 import { tagPillStyles } from '@/lib/tagColors';
 
@@ -12,8 +14,10 @@ const props = defineProps<{
   tag: Tag;
 }>();
 
+// -------------------------------------------------- Store --------------------------------------------------
 const themeMode = useDataTheme();
 
+// -------------------------------------------------- Computed --------------------------------------------------
 const pillStyle = computed(() => tagPillStyles(props.tag, themeMode.value));
 </script>
 
