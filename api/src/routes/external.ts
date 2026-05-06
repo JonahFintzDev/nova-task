@@ -19,9 +19,13 @@ import { db } from '../classes/database';
 
 async function apiKeyPreHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const auth = request.headers['authorization'];
-  const rawKey = auth?.startsWith('Bearer ') ? auth.slice(7) : undefined;
+  const rawApiKeyHeader = request.headers['x-api-key'];
+  const apiKeyFromHeader = Array.isArray(rawApiKeyHeader) ? rawApiKeyHeader[0] : rawApiKeyHeader;
+  const rawKey = auth?.startsWith('Bearer ') ? auth.slice(7) : apiKeyFromHeader;
   if (!rawKey) {
-    await reply.code(401).send({ error: 'Missing or invalid Authorization header' });
+    await reply
+      .code(401)
+      .send({ error: 'Missing API key. Use Authorization: Bearer <key> or X-Api-Key: <key>' });
     return;
   }
   const record = await db.findApiKeyByRawKey(rawKey);

@@ -32,9 +32,13 @@ const sessions = new Map<string, Session>();
 
 async function apiKeyPreHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const auth = request.headers['authorization'];
-  const rawKey = auth?.startsWith('Bearer ') ? auth.slice(7) : undefined;
+  const rawApiKeyHeader = request.headers['x-api-key'];
+  const apiKeyFromHeader = Array.isArray(rawApiKeyHeader) ? rawApiKeyHeader[0] : rawApiKeyHeader;
+  const rawKey = auth?.startsWith('Bearer ') ? auth.slice(7) : apiKeyFromHeader;
   if (!rawKey) {
-    await reply.code(401).send({ error: 'Missing or invalid Authorization header' });
+    await reply
+      .code(401)
+      .send({ error: 'Missing API key. Use Authorization: Bearer <key> or X-Api-Key: <key>' });
     return;
   }
   const record = await db.findApiKeyByRawKey(rawKey);
@@ -213,7 +217,8 @@ export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
       authentication: {
         type: 'bearer',
         headerName: 'Authorization',
-        description: 'Send your API key as: Authorization: Bearer <key>. Generate keys in Nova Task Settings → API Keys.',
+        description:
+          'Send your API key as Authorization: Bearer <key> (preferred) or X-Api-Key: <key>. Generate keys in Nova Task Settings → API Keys.',
       },
       capabilities: { tools: true, resources: true },
     });
@@ -245,7 +250,7 @@ export async function mcpRoutes(fastify: FastifyInstance): Promise<void> {
       authHeader: 'Authorization',
       instructions:
         `Connect your MCP client to ${mcpServerUrl}.\n` +
-        'Authenticate with: Authorization: Bearer <your-api-key>\n' +
+        'Authenticate with: Authorization: Bearer <your-api-key> (preferred) or X-Api-Key: <your-api-key>\n' +
         'Generate an API key in Nova Task Settings → API Keys.',
     });
   });

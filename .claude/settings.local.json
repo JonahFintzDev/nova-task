@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(node -e \"const sdk = require\\('@modelcontextprotocol/sdk/server/index.js'\\); console.log\\('Server OK:', !!sdk.Server\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const p = require\\('/data-root/personal/nova-task/app/api/node_modules/@modelcontextprotocol/sdk/package.json'\\); console.log\\('type:', p.type, '\\\\nexports keys:', Object.keys\\(p.exports || {}\\).slice\\(0, 10\\)\\)\")",
+      "Bash(node -e \"const p = require\\('/data-root/personal/nova-task/app/api/node_modules/@modelcontextprotocol/sdk/package.json'\\); console.log\\(JSON.stringify\\(p.exports['./server'], null, 2\\)\\)\")",
+      "Bash(node -e \"const p = require\\('/data-root/personal/nova-task/app/api/node_modules/@modelcontextprotocol/sdk/package.json'\\); console.log\\('main:', p.main, '\\\\ntypes:', p.types\\)\")",
+      "Bash(node -e \"const p = require\\('/data-root/personal/nova-task/app/api/node_modules/@modelcontextprotocol/sdk/package.json'\\); console.log\\(JSON.stringify\\(p.exports['./*'], null, 2\\)\\)\")",
+      "Bash(npx tsc *)",
+      "Bash(node --input-type=module)",
+      "Bash(node --input-type=module --experimental-vm-modules -e \"import\\('@modelcontextprotocol/sdk/types'\\).then\\(m => console.log\\(Object.keys\\(m\\).filter\\(k => k.includes\\('Schema'\\) || k === 'isInitializeRequest'\\).slice\\(0,20\\).join\\('\\\\n'\\)\\)\\)\")",
+      "Bash(node -e \"const p = require\\('./node_modules/@modelcontextprotocol/sdk/package.json'\\); console.log\\(JSON.stringify\\(p.exports, null, 2\\)\\)\")",
+      "Bash(./node_modules/.bin/tsc --noEmit)"
+    ]
+  }
+}
